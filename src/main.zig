@@ -63,7 +63,7 @@ fn parsePortList(allocator: Allocator, port_str: []const u8) !ArrayList(u16) {
     while (iter.next()) |port_part| {
         const trimmed = mem.trim(u8, port_part, " \t\r\n");
         if (trimmed.len == 0) continue;
-        
+
         const port = try fmt.parseInt(u16, trimmed, 10);
         try ports.append(port);
     }
@@ -93,6 +93,17 @@ fn parsePortRange(allocator: Allocator, range_str: []const u8) !ArrayList(u16) {
 }
 
 fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
+    const builtin = @import("builtin");
+    const is_windows = builtin.os.tag == .windows;
+
+    if (is_windows) {
+        return scanPortWindows(host, port, timeout_ms);
+    } else {
+        return scanPortUnix(host, port, timeout_ms);
+    }
+}
+
+fn scanPortUnix(host: []const u8, port: u16, timeout_ms: u32) bool {
     const C = @cImport({
         @cInclude("sys/socket.h");
         @cInclude("netinet/in.h");
@@ -102,7 +113,7 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
         @cInclude("errno.h");
         @cInclude("poll.h");
     });
-    
+
     // Parse the address
     const address = net.Address.parseIp4(host, port) catch {
         return false;
@@ -122,13 +133,21 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
     // Attempt connection
     const addr_ptr: *const C.sockaddr = @ptrCast(&address.in);
     const result = C.connect(sockfd, addr_ptr, @sizeOf(C.sockaddr_in));
-    
+
     if (result == 0) {
         return true; // Connected immediately
     }
 
-    const err = C.__errno_location().*;
-    if (err != C.EINPROGRESS) {
+    // Cross-platform errno access
+    const builtin = @import("builtin");
+    const errno_val = if (builtin.os.tag == .linux)
+        C.__errno_location().*
+    else if (builtin.os.tag == .macos or builtin.os.tag == .ios)
+        C.__error().*
+    else
+        C.errno;
+
+    if (errno_val != C.EINPROGRESS) {
         return false;
     }
 
@@ -140,7 +159,7 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
     };
 
     const poll_result = C.poll(&pfd, 1, @as(c_int, @intCast(timeout_ms)));
-    
+
     if (poll_result <= 0) {
         return false; // Timeout or error
     }
@@ -149,6 +168,72 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (pfd.revents & C.POLLOUT != 0) {
         var err_code: c_int = 0;
         var err_len: C.socklen_t = @sizeOf(c_int);
+        _ = C.getsockopt(sockfd, C.SOL_SOCKET, C.SO_ERROR, @ptrCast(&err_code), &err_len);
+        return err_code == 0;
+    }
+
+    return false;
+}
+
+fn scanPortWindows(host: []const u8, port: u16, timeout_ms: u32) bool {
+    const C = @cImport({
+        @cInclude("winsock2.h");
+        @cInclude("ws2tcpip.h");
+    });
+
+    // Parse the address
+    _ = net.Address.parseIp4(host, port) catch {
+        return false;
+    };
+
+    // Create socket
+    const sockfd = C.socket(C.AF_INET, C.SOCK_STREAM, C.IPPROTO_TCP);
+    if (sockfd == C.INVALID_SOCKET) {
+        return false;
+    }
+    defer _ = C.closesocket(sockfd);
+
+    // Set non-blocking
+    var mode: c_ulong = 1;
+    _ = C.ioctlsocket(sockfd, C.FIONBIO, &mode);
+
+    // Attempt connection
+    var addr: C.sockaddr_in = undefined;
+    addr.sin_family = C.AF_INET;
+    addr.sin_port = C.htons(port);
+    addr.sin_addr.s_addr = C.inet_addr(host.ptr);
+
+    const result = C.connect(sockfd, @ptrCast(&addr), @sizeOf(C.sockaddr_in));
+
+    if (result == 0) {
+        return true; // Connected immediately
+    }
+
+    // Check if connection is in progress
+    if (C.WSAGetLastError() != C.WSAEWOULDBLOCK) {
+        return false;
+    }
+
+    // Use select for timeout
+    var timeout = C.timeval{
+        .tv_sec = @intCast(timeout_ms / 1000),
+        .tv_usec = @intCast((timeout_ms % 1000) * 1000),
+    };
+
+    var write_fds: C.fd_set = undefined;
+    C.FD_ZERO(&write_fds);
+    C.FD_SET(sockfd, &write_fds);
+
+    const select_result = C.select(0, null, &write_fds, null, &timeout);
+
+    if (select_result <= 0) {
+        return false; // Timeout or error
+    }
+
+    // Check if connection succeeded
+    if (C.FD_ISSET(sockfd, &write_fds) != 0) {
+        var err_code: c_int = 0;
+        var err_len: c_int = @sizeOf(c_int);
         _ = C.getsockopt(sockfd, C.SOL_SOCKET, C.SO_ERROR, @ptrCast(&err_code), &err_len);
         return err_code == 0;
     }
@@ -172,7 +257,7 @@ const ScanWorker = struct {
     fn run(self: *ScanWorker) void {
         while (true) {
             self.task_mutex.lock();
-            
+
             if (self.task_queue.items.len == 0) {
                 self.task_mutex.unlock();
                 break;
@@ -246,11 +331,11 @@ fn outputJson(allocator: Allocator, results: []const ScanResult, file_path: ?[]c
     defer output.deinit();
 
     try output.appendSlice("[\n");
-    
+
     var first = true;
     for (results) |result| {
         if (!result.open) continue;
-        
+
         if (!first) {
             try output.appendSlice(",\n");
         }
@@ -262,7 +347,7 @@ fn outputJson(allocator: Allocator, results: []const ScanResult, file_path: ?[]c
         try fmt.format(output.writer(), "    \"status\": \"open\"\n", .{});
         try output.appendSlice("  }");
     }
-    
+
     try output.appendSlice("\n]\n");
 
     if (file_path) |path| {
@@ -279,7 +364,7 @@ fn outputTxt(results: []const ScanResult, file_path: ?[]const u8) !void {
     if (file_path) |path| {
         const file = try fs.cwd().createFile(path, .{});
         defer file.close();
-        
+
         for (results) |result| {
             if (result.open) {
                 try file.writer().print("{s}:{}\n", .{ result.host, result.port });
@@ -304,12 +389,12 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     var config = Config{};
-    
+
     // Parse command line arguments
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const arg = args[i];
-        
+
         if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
             printHelp();
             return;
@@ -403,7 +488,7 @@ pub fn main() !void {
         std.debug.print("[*] Scanning...\n\n", .{});
 
         const start_time = std.time.milliTimestamp();
-        
+
         const results = try scanConcurrent(allocator, target, ports_list.items, config);
         defer results.deinit();
 
