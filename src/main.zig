@@ -63,7 +63,7 @@ fn parsePortList(allocator: Allocator, port_str: []const u8) !ArrayList(u16) {
     while (iter.next()) |port_part| {
         const trimmed = mem.trim(u8, port_part, " \t\r\n");
         if (trimmed.len == 0) continue;
-        
+
         const port = try fmt.parseInt(u16, trimmed, 10);
         try ports.append(port);
     }
@@ -102,7 +102,7 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
         @cInclude("errno.h");
         @cInclude("poll.h");
     });
-    
+
     // Parse the address
     const address = net.Address.parseIp4(host, port) catch {
         return false;
@@ -122,7 +122,7 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
     // Attempt connection
     const addr_ptr: *const C.sockaddr = @ptrCast(&address.in);
     const result = C.connect(sockfd, addr_ptr, @sizeOf(C.sockaddr_in));
-    
+
     if (result == 0) {
         return true; // Connected immediately
     }
@@ -140,7 +140,7 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
     };
 
     const poll_result = C.poll(&pfd, 1, @as(c_int, @intCast(timeout_ms)));
-    
+
     if (poll_result <= 0) {
         return false; // Timeout or error
     }
@@ -172,7 +172,7 @@ const ScanWorker = struct {
     fn run(self: *ScanWorker) void {
         while (true) {
             self.task_mutex.lock();
-            
+
             if (self.task_queue.items.len == 0) {
                 self.task_mutex.unlock();
                 break;
@@ -246,11 +246,11 @@ fn outputJson(allocator: Allocator, results: []const ScanResult, file_path: ?[]c
     defer output.deinit();
 
     try output.appendSlice("[\n");
-    
+
     var first = true;
     for (results) |result| {
         if (!result.open) continue;
-        
+
         if (!first) {
             try output.appendSlice(",\n");
         }
@@ -262,7 +262,7 @@ fn outputJson(allocator: Allocator, results: []const ScanResult, file_path: ?[]c
         try fmt.format(output.writer(), "    \"status\": \"open\"\n", .{});
         try output.appendSlice("  }");
     }
-    
+
     try output.appendSlice("\n]\n");
 
     if (file_path) |path| {
@@ -279,7 +279,7 @@ fn outputTxt(results: []const ScanResult, file_path: ?[]const u8) !void {
     if (file_path) |path| {
         const file = try fs.cwd().createFile(path, .{});
         defer file.close();
-        
+
         for (results) |result| {
             if (result.open) {
                 try file.writer().print("{s}:{}\n", .{ result.host, result.port });
@@ -304,12 +304,12 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     var config = Config{};
-    
+
     // Parse command line arguments
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const arg = args[i];
-        
+
         if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
             printHelp();
             return;
@@ -403,7 +403,7 @@ pub fn main() !void {
         std.debug.print("[*] Scanning...\n\n", .{});
 
         const start_time = std.time.milliTimestamp();
-        
+
         const results = try scanConcurrent(allocator, target, ports_list.items, config);
         defer results.deinit();
 
