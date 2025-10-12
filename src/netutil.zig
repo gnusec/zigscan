@@ -1,12 +1,20 @@
 const std = @import("std");
 const net = std.net;
 const builtin = @import("builtin");
+const windows = std.os.windows;
 
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
-        // Windows path to be implemented: initial stub to enable compilation
-        // Future: use std.net cross-platform connect or Winsock with timeout
-        return false;
+        // Minimal Windows implementation: best-effort connect (timeout not enforced yet)
+        const address = net.Address.parseIp4(host, port) catch {
+            return false;
+        };
+        var conn = net.tcpConnectToAddress(address) catch {
+            return false;
+        };
+        defer conn.close();
+        _ = timeout_ms; // future: enforce timeout using non-blocking mode/IOCP
+        return true;
     } else {
         return connectWithTimeoutIPv4Posix(host, port, timeout_ms);
     }

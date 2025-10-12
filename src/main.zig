@@ -24,6 +24,7 @@ const Config = struct {
     concurrency: u32 = 500,
     timeout_ms: u32 = 1000,
     adaptive: bool = false,
+    adaptive_log: bool = false,
     output_json: bool = false,
     output_txt: bool = false,
     output_file: ?[]const u8 = null,
@@ -45,6 +46,7 @@ fn printHelp() void {
         \\  -c, --concurrency <n>   Number of concurrent connections (default: 500)
         \\  --timeout <ms>          Connection timeout in milliseconds (default: 1000)
         \\  --adaptive              Enable simple adaptive concurrency (experimental)
+        \\  --adaptive-log          Print adaptive tuning details (debug)
         \\  --json                  Output results in JSON format
         \\  --txt                   Output results in TXT format
         \\  -o, --output <file>     Output file path
@@ -220,11 +222,23 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
         for (threads) |t| t.join();
         const dur = std.time.milliTimestamp() - tstart;
 
+        // 统计本批次 open 数
+        var open_batch: usize = 0;
+        for (results.items) |r| {
+            if (r.open) open_batch += 1;
+        }
+
         const timeout = config.timeout_ms;
-        if (dur < timeout / 3 and current_c < max_c) {
+        if (dur < timeout / 3 and current_c < max_c and open_batch > 0) {
             current_c = @min(max_c, current_c + (current_c / 2) + 1);
         } else if (dur > timeout and current_c > min_c) {
             current_c = @max(min_c, current_c - (current_c / 3) - 1);
+        }
+
+        if (config.adaptive_log) {
+            std.debug.print("[adaptive] batch={d} dur={d}ms open_increase={d}/{d} -> concurrency={d}\n", .{
+                batch_c, dur, open_batch, batch_c, current_c,
+            });
         }
 
         idx += batch_c;
@@ -359,6 +373,8 @@ pub fn main() !void {
             config.output_txt = true;
         } else if (mem.eql(u8, arg, "--adaptive")) {
             config.adaptive = true;
+        } else if (mem.eql(u8, arg, "--adaptive-log")) {
+            config.adaptive_log = true;
         } else if (mem.eql(u8, arg, "-o") or mem.eql(u8, arg, "--output")) {
             i += 1;
             if (i >= args.len) {
