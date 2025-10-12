@@ -1,4 +1,4 @@
- 为了帮助您在新会话中使用AI生成端口扫描器代码，考虑到Zig(0.15.1)语法和，以下是一个合适的提示词：
+ 为了帮助您在新会话中使用AI生成端口扫描器代码，考虑到Zig语法，以下是一个合适的提示词：
 
   请使用Zig语言创建一个高性能的端口扫描器(类似rustscan)，要求如下：
 
@@ -39,8 +39,9 @@
   使用这个提示词， 应该能够生成符合需求的端口扫描器代码。
 
 语法兼容性问题解决
-1：zig-0.15.1 是zig源码目录，有语法和兼容性问题查询这目录,不要编译这个目录下源码，只是查看用
-2: 使用系统安装的zig
-3：先读取 zig-Language-Reference-0.15.1.txt 了解最新的zig语法， 直到扫描和编译成功    。记住你训练的数据中的zig语法可能比现在最新的老，会不兼容，所以必须查看我提供的zig语法手册。
+0: git clone https://github.com/ziglang/zig 获取最新的zig源码，通过查询zig库源码可以获取最新的zig语法
+1：通过 https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.699+529aa9f27.tar.xz 可以获取最新的zig可执行版本，直接下载到本地服务器，直接解压到/usr/loca/bin或者/bin目录下可用
+如果0.16.0不可行，则使用
+2：https://ziglang.org/documentation/master/ 和 https://ziglang.org/documentation/master/std/ 提供了最新的zig语法文档，可以保存到本地查询，如果有必要
  
 
