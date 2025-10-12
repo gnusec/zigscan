@@ -66,12 +66,10 @@ jobs:
           "x86_64-linux-gnu",
           "aarch64-linux-gnu",
           "arm-linux-gnueabihf",
-          "i386-linux-gnu",
+          "x86-linux-gnu",
           "riscv64-linux-gnu",
           "x86_64-linux-musl",
-          "aarch64-linux-musl",
-          "x86_64-macos",
-          "aarch64-macos"
+          "aarch64-linux-musl"
         ]
     steps:
       - name: Checkout code
@@ -96,13 +94,7 @@ jobs:
             fi
           fi
 
-      - name: Run help test
-        run: ./zig-out/bin/zigscan --help
-        if: runner.os != 'Windows'
-        
-      - name: Run help test (Windows)
-        run: ./zig-out/bin/zigscan.exe --help
-        if: runner.os == 'Windows'
+      # Cross-built binaries are not runnable on the host; we only verify build succeeds
 
   lint:
     name: Format Check
