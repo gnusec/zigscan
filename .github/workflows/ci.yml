@@ -26,6 +26,18 @@ jobs:
       - name: Build
         run: zig build
 
+      - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <10s)
+        run: |
+          start=$(date +%s%3N)
+          ./zig-out/bin/zigscan -t 127.0.0.1 -r 80-555 -c 100 --timeout 200 >/dev/null
+          end=$(date +%s%3N)
+          dur=$((end-start))
+          echo "duration=${dur}ms"
+          if [ "$dur" -gt 10000 ]; then
+            echo "FAIL: scan took >10s"
+            exit 1
+          fi
+
       - name: Run help test
         run: ./zig-out/bin/zigscan --help
         if: runner.os != 'Windows'
