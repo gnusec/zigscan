@@ -4,6 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const want_static = b.option(bool, "static", "Link statically when supported") orelse false;
+    const want_strip = b.option(bool, "strip", "Strip symbols to reduce binary size") orelse false;
 
     const exe = b.addExecutable(.{
         .name = "zigscan",
@@ -14,6 +15,8 @@ pub fn build(b: *std.Build) void {
         }),
         .linkage = if (want_static) .static else null,
     });
+
+    exe.strip = want_strip;
 
     exe.linkLibC();
 
