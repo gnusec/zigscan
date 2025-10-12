@@ -111,7 +111,9 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
     const addr_len: posix.socklen_t = @sizeOf(@TypeOf(address.in));
     var need_poll = false;
     posix.connect(fd, addr_ptr, addr_len) catch |err| switch (err) {
-        error.WouldBlock, error.ConnectionPending => { need_poll = true; },
+        error.WouldBlock, error.ConnectionPending => {
+            need_poll = true;
+        },
         else => return false,
     };
     if (!need_poll) return true;
