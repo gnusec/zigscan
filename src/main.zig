@@ -1,13 +1,14 @@
 const std = @import("std");
 const net = std.net;
 const os = std.os;
+const netutil = @import("netutil.zig");
 const fs = std.fs;
 const mem = std.mem;
 const fmt = std.fmt;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 
-const Version = "1.0.0";
+const Version = "0.1.1";
 
 const ScanResult = struct {
     host: []const u8,
@@ -22,6 +23,7 @@ const Config = struct {
     port_range: ?[]const u8 = null,
     concurrency: u32 = 500,
     timeout_ms: u32 = 1000,
+    adaptive: bool = false,
     output_json: bool = false,
     output_txt: bool = false,
     output_file: ?[]const u8 = null,
@@ -42,6 +44,7 @@ fn printHelp() void {
         \\  -r, --range <range>     Port range (e.g., 1-1000)
         \\  -c, --concurrency <n>   Number of concurrent connections (default: 500)
         \\  --timeout <ms>          Connection timeout in milliseconds (default: 1000)
+        \\  --adaptive              Enable simple adaptive concurrency (experimental)
         \\  --json                  Output results in JSON format
         \\  --txt                   Output results in TXT format
         \\  -o, --output <file>     Output file path
@@ -93,40 +96,7 @@ fn parsePortRange(allocator: Allocator, range_str: []const u8) !ArrayList(u16) {
 }
 
 fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
-    const posix = std.posix;
-
-    // Parse the address
-    const address = net.Address.parseIp4(host, port) catch {
-        return false;
-    };
-
-    // Create socket (IPv4 TCP) non-blocking
-    const fd = posix.socket(posix.AF.INET, posix.SOCK.STREAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK, 0) catch {
-        return false;
-    };
-    defer posix.close(fd);
-
-    // Attempt connection
-    const addr_ptr: *const posix.sockaddr = @ptrCast(&address.in);
-    const addr_len: posix.socklen_t = @sizeOf(@TypeOf(address.in));
-    var need_poll = false;
-    posix.connect(fd, addr_ptr, addr_len) catch |err| switch (err) {
-        error.WouldBlock, error.ConnectionPending => {
-            need_poll = true;
-        },
-        else => return false,
-    };
-    if (!need_poll) return true;
-
-    // Wait for connection with timeout using poll
-    var fds = [_]posix.pollfd{.{ .fd = fd, .events = posix.POLL.OUT, .revents = 0 }};
-    const n = posix.poll(fds[0..], @as(i32, @intCast(timeout_ms))) catch return false;
-    if (n == 0) return false; // timeout
-
-    // Check if connection succeeded via SO_ERROR
-    var err_code: c_int = 0;
-    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code)) catch return false;
-    return err_code == 0;
+    return netutil.connectWithTimeoutIPv4(host, port, timeout_ms);
 }
 
 const ScanTask = struct {
@@ -209,6 +179,55 @@ fn scanConcurrent(allocator: Allocator, host: []const u8, ports: []const u16, co
     // Wait for all threads to complete
     for (threads) |thread| {
         thread.join();
+    }
+
+    return results;
+}
+
+fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const u16, config: Config) !ArrayList(ScanResult) {
+    var results = ArrayList(ScanResult){};
+
+    var idx: usize = 0;
+    var current_c: usize = @intCast(@max(@as(u32, 1), config.concurrency));
+    const min_c: usize = 8;
+    const max_c: usize = 2000;
+
+    while (idx < ports.len) {
+        const remaining = ports.len - idx;
+        const batch_c = if (remaining < current_c) remaining else current_c;
+
+        var task_queue = ArrayList(ScanTask){};
+        defer task_queue.deinit(allocator);
+        var j: usize = 0;
+        while (j < batch_c) : (j += 1) {
+            try task_queue.append(allocator, .{ .host = host, .port = ports[idx + j], .timeout_ms = config.timeout_ms });
+        }
+
+        var mutex = std.Thread.Mutex{};
+        var task_mutex = std.Thread.Mutex{};
+        const threads = try allocator.alloc(std.Thread, batch_c);
+        defer allocator.free(threads);
+        var worker = ScanWorker{
+            .allocator = allocator,
+            .task_queue = &task_queue,
+            .results = &results,
+            .mutex = &mutex,
+            .task_mutex = &task_mutex,
+        };
+
+        const tstart = std.time.milliTimestamp();
+        for (threads) |*t| t.* = try std.Thread.spawn(.{}, ScanWorker.run, .{&worker});
+        for (threads) |t| t.join();
+        const dur = std.time.milliTimestamp() - tstart;
+
+        const timeout = config.timeout_ms;
+        if (dur < timeout / 3 and current_c < max_c) {
+            current_c = @min(max_c, current_c + (current_c / 2) + 1);
+        } else if (dur > timeout and current_c > min_c) {
+            current_c = @max(min_c, current_c - (current_c / 3) - 1);
+        }
+
+        idx += batch_c;
     }
 
     return results;
@@ -338,6 +357,8 @@ pub fn main() !void {
             config.output_json = true;
         } else if (mem.eql(u8, arg, "--txt")) {
             config.output_txt = true;
+        } else if (mem.eql(u8, arg, "--adaptive")) {
+            config.adaptive = true;
         } else if (mem.eql(u8, arg, "-o") or mem.eql(u8, arg, "--output")) {
             i += 1;
             if (i >= args.len) {
@@ -377,13 +398,13 @@ pub fn main() !void {
         std.debug.print("\n[*] Starting ZigScan v{s}\n", .{Version});
         std.debug.print("[*] Target: {s}\n", .{target});
         std.debug.print("[*] Ports: {d} total\n", .{ports_list.items.len});
-        std.debug.print("[*] Concurrency: {d}\n", .{config.concurrency});
+        std.debug.print("[*] Concurrency: {d}{s}\n", .{ config.concurrency, if (config.adaptive) " (adaptive)" else "" });
         std.debug.print("[*] Timeout: {d}ms\n", .{config.timeout_ms});
         std.debug.print("[*] Scanning...\n\n", .{});
 
         const start_time = std.time.milliTimestamp();
 
-        var results = try scanConcurrent(allocator, target, ports_list.items, config);
+        var results = try (if (config.adaptive) scanConcurrentAdaptive(allocator, target, ports_list.items, config) else scanConcurrent(allocator, target, ports_list.items, config));
         defer results.deinit(allocator);
 
         const end_time = std.time.milliTimestamp();
