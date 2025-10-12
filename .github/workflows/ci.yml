@@ -96,6 +96,49 @@ jobs:
 
       # Cross-built binaries are not runnable on the host; we only verify build succeeds
 
+  experimental-cross-build:
+    name: EXP Cross-build ${{ matrix.target }} (static-preferred)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "x86_64-windows",
+          "aarch64-windows",
+          "x86-windows",
+          "mips-linux-musl",
+          "mipsel-linux-musl",
+          "mips64-linux-musl",
+          "mips64el-linux-musl",
+          "powerpc64le-linux-gnu",
+          "s390x-linux-gnu",
+          "riscv32-linux-gnu"
+        ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Zig (nightly)
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Cross build (static preferred with fallback)
+        shell: bash
+        run: |
+          T="${{ matrix.target }}"
+          if [[ "$T" == *"-linux-musl"* ]]; then
+            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true
+          else
+            if zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true; then
+              echo "static link succeeded"
+            else
+              echo "static link unsupported; falling back to dynamic"
+              zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+            fi
+          fi
+
   lint:
     name: Format Check
     runs-on: ubuntu-latest
