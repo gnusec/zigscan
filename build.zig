@@ -3,12 +3,16 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const want_static = b.option(bool, "static", "Link statically when supported") orelse false;
 
     const exe = b.addExecutable(.{
         .name = "zigscan",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+        .linkage = if (want_static) .static else null,
     });
 
     exe.linkLibC();

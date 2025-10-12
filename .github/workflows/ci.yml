@@ -12,27 +12,145 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig 0.13.0 (stable)
+      - name: Setup Zig (nightly)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
+          version: master
 
       - name: Build
         run: zig build
 
-      - name: Run help test
-        run: ./zig-out/bin/zigscan --help
-        if: runner.os != 'Windows'
-        
-      - name: Run help test (Windows)
-        run: ./zig-out/bin/zigscan.exe --help
-        if: runner.os == 'Windows'
+      - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <10s)
+        run: |
+          python3 - <<'PY'
+          import time, subprocess, sys
+          start = time.time()
+          code = subprocess.call(["./zig-out/bin/zigscan","-t","127.0.0.1","-r","80-555","-c","100","--timeout","200"], stdout=subprocess.DEVNULL)
+          if code != 0:
+              sys.exit(code)
+          dur = int((time.time()-start)*1000)
+          print(f"duration={dur}ms")
+          if dur > 10000:
+              print("FAIL: scan took >10s")
+              sys.exit(1)
+          PY
+
+      - name: Performance smoke test (103.235.46.115 ports 80,443, c=100, timeout=200ms, <10s)
+        run: |
+          python3 - <<'PY'
+          import time, subprocess, sys
+          start = time.time()
+          code = subprocess.call(["./zig-out/bin/zigscan","-t","103.235.46.115","-p","80,443","-c","100","--timeout","200"], stdout=subprocess.DEVNULL)
+          if code != 0:
+              sys.exit(code)
+          dur = int((time.time()-start)*1000)
+          print(f"duration={dur}ms")
+          if dur > 10000:
+              print("FAIL: scan took >10s")
+              sys.exit(1)
+          PY
+
+  cross-build:
+    name: Cross-build ${{ matrix.target }} on ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "x86_64-linux-gnu",
+          "aarch64-linux-gnu",
+          "arm-linux-gnueabihf",
+          "x86-linux-gnu",
+          "riscv64-linux-gnu",
+          "x86_64-linux-musl",
+          "aarch64-linux-musl"
+        ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Zig (nightly)
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Cross build
+        run: |
+          if [[ "${{ matrix.target }}" == *"linux-musl"* ]]; then
+            zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe -Dstatic=true
+          else
+            # Try static first; if unsupported, fallback to dynamic
+            if zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe -Dstatic=true; then
+              echo "static link succeeded"
+            else
+              echo "static link unsupported; falling back to dynamic"
+              zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe
+            fi
+          fi
+
+      # Cross-built binaries are not runnable on the host; we only verify build succeeds
+
+  experimental-cross-build:
+    name: EXP Cross-build ${{ matrix.target }} (static-preferred)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "x86_64-windows",
+          "aarch64-windows",
+          "x86-windows",
+          "x86_64-freebsd",
+          "aarch64-freebsd",
+          "x86_64-openbsd",
+          "aarch64-openbsd",
+          "x86_64-netbsd",
+          "aarch64-netbsd",
+          "loongarch64-linux-gnu",
+          "mips-linux-musl",
+          "mipsel-linux-musl",
+          "mips64-linux-musl",
+          "mips64el-linux-musl",
+          "mips-linux-gnu",
+          "mipsel-linux-gnu",
+          "mips64-linux-gnu",
+          "mips64el-linux-gnu",
+          "powerpc64le-linux-gnu",
+          "s390x-linux-gnu",
+          "riscv32-linux-gnu",
+          "riscv64-linux-musl",
+          "arm-linux-musleabihf"
+        ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Zig (nightly)
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Cross build (static preferred with fallback)
+        shell: bash
+        run: |
+          T="${{ matrix.target }}"
+          if [[ "$T" == *"-linux-musl"* ]]; then
+            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true
+          else
+            if zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true; then
+              echo "static link succeeded"
+            else
+              echo "static link unsupported; falling back to dynamic"
+              zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+            fi
+          fi
 
   lint:
     name: Format Check
@@ -42,10 +160,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig 0.13.0 (stable)
+      - name: Setup Zig (nightly)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
+          version: master
 
       - name: Check formatting
         run: zig fmt --check src/

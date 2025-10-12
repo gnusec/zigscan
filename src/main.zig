@@ -56,26 +56,26 @@ fn printHelp() void {
 }
 
 fn parsePortList(allocator: Allocator, port_str: []const u8) !ArrayList(u16) {
-    var ports = ArrayList(u16).init(allocator);
-    errdefer ports.deinit();
+    var ports = ArrayList(u16){};
+    errdefer ports.deinit(allocator);
 
-    var iter = mem.split(u8, port_str, ",");
+    var iter = mem.splitScalar(u8, port_str, ',');
     while (iter.next()) |port_part| {
         const trimmed = mem.trim(u8, port_part, " \t\r\n");
         if (trimmed.len == 0) continue;
-        
+
         const port = try fmt.parseInt(u16, trimmed, 10);
-        try ports.append(port);
+        try ports.append(allocator, port);
     }
 
     return ports;
 }
 
 fn parsePortRange(allocator: Allocator, range_str: []const u8) !ArrayList(u16) {
-    var ports = ArrayList(u16).init(allocator);
-    errdefer ports.deinit();
+    var ports = ArrayList(u16){};
+    errdefer ports.deinit(allocator);
 
-    var iter = mem.split(u8, range_str, "-");
+    var iter = mem.splitScalar(u8, range_str, '-');
     const start_str = iter.next() orelse return error.InvalidRange;
     const end_str = iter.next() orelse return error.InvalidRange;
 
@@ -86,74 +86,47 @@ fn parsePortRange(allocator: Allocator, range_str: []const u8) !ArrayList(u16) {
 
     var port = start;
     while (port <= end) : (port += 1) {
-        try ports.append(port);
+        try ports.append(allocator, port);
     }
 
     return ports;
 }
 
 fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
-    const C = @cImport({
-        @cInclude("sys/socket.h");
-        @cInclude("netinet/in.h");
-        @cInclude("arpa/inet.h");
-        @cInclude("unistd.h");
-        @cInclude("fcntl.h");
-        @cInclude("errno.h");
-        @cInclude("poll.h");
-    });
-    
+    const posix = std.posix;
+
     // Parse the address
     const address = net.Address.parseIp4(host, port) catch {
         return false;
     };
 
-    // Create socket
-    const sockfd = C.socket(C.AF_INET, C.SOCK_STREAM, 0);
-    if (sockfd < 0) {
+    // Create socket (IPv4 TCP) non-blocking
+    const fd = posix.socket(posix.AF.INET, posix.SOCK.STREAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK, 0) catch {
         return false;
-    }
-    defer _ = C.close(sockfd);
-
-    // Set non-blocking
-    const flags = C.fcntl(sockfd, C.F_GETFL, @as(c_int, 0));
-    _ = C.fcntl(sockfd, C.F_SETFL, flags | C.O_NONBLOCK);
+    };
+    defer posix.close(fd);
 
     // Attempt connection
-    const addr_ptr: *const C.sockaddr = @ptrCast(&address.in);
-    const result = C.connect(sockfd, addr_ptr, @sizeOf(C.sockaddr_in));
-    
-    if (result == 0) {
-        return true; // Connected immediately
-    }
-
-    const err = C.__errno_location().*;
-    if (err != C.EINPROGRESS) {
-        return false;
-    }
+    const addr_ptr: *const posix.sockaddr = @ptrCast(&address.in);
+    const addr_len: posix.socklen_t = @sizeOf(@TypeOf(address.in));
+    var need_poll = false;
+    posix.connect(fd, addr_ptr, addr_len) catch |err| switch (err) {
+        error.WouldBlock, error.ConnectionPending => {
+            need_poll = true;
+        },
+        else => return false,
+    };
+    if (!need_poll) return true;
 
     // Wait for connection with timeout using poll
-    var pfd = C.pollfd{
-        .fd = sockfd,
-        .events = C.POLLOUT,
-        .revents = 0,
-    };
+    var fds = [_]posix.pollfd{.{ .fd = fd, .events = posix.POLL.OUT, .revents = 0 }};
+    const n = posix.poll(fds[0..], @as(i32, @intCast(timeout_ms))) catch return false;
+    if (n == 0) return false; // timeout
 
-    const poll_result = C.poll(&pfd, 1, @as(c_int, @intCast(timeout_ms)));
-    
-    if (poll_result <= 0) {
-        return false; // Timeout or error
-    }
-
-    // Check if connection succeeded
-    if (pfd.revents & C.POLLOUT != 0) {
-        var err_code: c_int = 0;
-        var err_len: C.socklen_t = @sizeOf(c_int);
-        _ = C.getsockopt(sockfd, C.SOL_SOCKET, C.SO_ERROR, @ptrCast(&err_code), &err_len);
-        return err_code == 0;
-    }
-
-    return false;
+    // Check if connection succeeded via SO_ERROR
+    var err_code: c_int = 0;
+    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code)) catch return false;
+    return err_code == 0;
 }
 
 const ScanTask = struct {
@@ -172,13 +145,13 @@ const ScanWorker = struct {
     fn run(self: *ScanWorker) void {
         while (true) {
             self.task_mutex.lock();
-            
+
             if (self.task_queue.items.len == 0) {
                 self.task_mutex.unlock();
                 break;
             }
 
-            const task = self.task_queue.pop();
+            const task = self.task_queue.pop().?;
             self.task_mutex.unlock();
 
             const is_open = scanPort(task.host, task.port, task.timeout_ms);
@@ -186,7 +159,7 @@ const ScanWorker = struct {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            self.results.append(ScanResult{
+            self.results.append(self.allocator, ScanResult{
                 .host = task.host,
                 .port = task.port,
                 .open = is_open,
@@ -196,13 +169,13 @@ const ScanWorker = struct {
 };
 
 fn scanConcurrent(allocator: Allocator, host: []const u8, ports: []const u16, config: Config) !ArrayList(ScanResult) {
-    var results = ArrayList(ScanResult).init(allocator);
-    var task_queue = ArrayList(ScanTask).init(allocator);
-    defer task_queue.deinit();
+    var results = ArrayList(ScanResult){};
+    var task_queue = ArrayList(ScanTask){};
+    defer task_queue.deinit(allocator);
 
     // Create task queue
     for (ports) |port| {
-        try task_queue.append(ScanTask{
+        try task_queue.append(allocator, ScanTask{
             .host = host,
             .port = port,
             .timeout_ms = config.timeout_ms,
@@ -242,28 +215,32 @@ fn scanConcurrent(allocator: Allocator, host: []const u8, ports: []const u16, co
 }
 
 fn outputJson(allocator: Allocator, results: []const ScanResult, file_path: ?[]const u8) !void {
-    var output = ArrayList(u8).init(allocator);
-    defer output.deinit();
+    var output = ArrayList(u8){};
+    defer output.deinit(allocator);
 
-    try output.appendSlice("[\n");
-    
+    try output.appendSlice(allocator, "[\n");
+
     var first = true;
     for (results) |result| {
         if (!result.open) continue;
-        
+
         if (!first) {
-            try output.appendSlice(",\n");
+            try output.appendSlice(allocator, ",\n");
         }
         first = false;
 
-        try output.appendSlice("  {\n");
-        try fmt.format(output.writer(), "    \"host\": \"{s}\",\n", .{result.host});
-        try fmt.format(output.writer(), "    \"port\": {},\n", .{result.port});
-        try fmt.format(output.writer(), "    \"status\": \"open\"\n", .{});
-        try output.appendSlice("  }");
+        try output.appendSlice(allocator, "  {\n");
+        var buf: [128]u8 = undefined;
+        const s1 = try std.fmt.bufPrint(&buf, "    \"host\": \"{s}\",\n", .{result.host});
+        try output.appendSlice(allocator, s1);
+        const s2 = try std.fmt.bufPrint(&buf, "    \"port\": {},\n", .{result.port});
+        try output.appendSlice(allocator, s2);
+        const s3 = try std.fmt.bufPrint(&buf, "    \"status\": \"open\"\n", .{});
+        try output.appendSlice(allocator, s3);
+        try output.appendSlice(allocator, "  }");
     }
-    
-    try output.appendSlice("\n]\n");
+
+    try output.appendSlice(allocator, "\n]\n");
 
     if (file_path) |path| {
         const file = try fs.cwd().createFile(path, .{});
@@ -279,10 +256,12 @@ fn outputTxt(results: []const ScanResult, file_path: ?[]const u8) !void {
     if (file_path) |path| {
         const file = try fs.cwd().createFile(path, .{});
         defer file.close();
-        
+
+        var buf: [128]u8 = undefined;
         for (results) |result| {
             if (result.open) {
-                try file.writer().print("{s}:{}\n", .{ result.host, result.port });
+                const s = try std.fmt.bufPrint(&buf, "{s}:{}\n", .{ result.host, result.port });
+                try file.writeAll(s);
             }
         }
         std.debug.print("Results saved to {s}\n", .{path});
@@ -304,12 +283,12 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     var config = Config{};
-    
+
     // Parse command line arguments
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const arg = args[i];
-        
+
         if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
             printHelp();
             return;
@@ -377,21 +356,21 @@ pub fn main() !void {
     }
 
     // Determine ports to scan
-    var ports_list = ArrayList(u16).init(allocator);
-    defer ports_list.deinit();
+    var ports_list = ArrayList(u16){};
+    defer ports_list.deinit(allocator);
 
     if (config.ports) |port_str| {
-        const parsed = try parsePortList(allocator, port_str);
-        defer parsed.deinit();
-        try ports_list.appendSlice(parsed.items);
+        var parsed = try parsePortList(allocator, port_str);
+        defer parsed.deinit(allocator);
+        try ports_list.appendSlice(allocator, parsed.items);
     } else if (config.port_range) |range_str| {
-        const parsed = try parsePortRange(allocator, range_str);
-        defer parsed.deinit();
-        try ports_list.appendSlice(parsed.items);
+        var parsed = try parsePortRange(allocator, range_str);
+        defer parsed.deinit(allocator);
+        try ports_list.appendSlice(allocator, parsed.items);
     } else {
         // Default common ports
         const default_ports = [_]u16{ 21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 8080, 8443 };
-        try ports_list.appendSlice(&default_ports);
+        try ports_list.appendSlice(allocator, &default_ports);
     }
 
     if (config.target) |target| {
@@ -403,9 +382,9 @@ pub fn main() !void {
         std.debug.print("[*] Scanning...\n\n", .{});
 
         const start_time = std.time.milliTimestamp();
-        
-        const results = try scanConcurrent(allocator, target, ports_list.items, config);
-        defer results.deinit();
+
+        var results = try scanConcurrent(allocator, target, ports_list.items, config);
+        defer results.deinit(allocator);
 
         const end_time = std.time.milliTimestamp();
         const duration = end_time - start_time;

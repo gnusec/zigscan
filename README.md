@@ -9,43 +9,28 @@ A high-performance port scanner written in Zig, similar to RustScan, designed fo
 
 ## ⚡ Quick Start
 
-### Download Pre-built Binaries
+### Downloads (v0.1.1)
 
-Download the latest release for your platform:
+Stable builds (static preferred, dynamic fallback when required):
 
-**Linux:**
-```bash
-# x86_64
-wget https://github.com/gnusec/zigscan/releases/latest/download/zigscan-linux-x86_64.tar.gz
-tar xzf zigscan-linux-x86_64.tar.gz
+| OS | Arch | Libc | Target | Download |
+|---|---|---|---|---|
+| Linux | x86_64 | glibc | x86_64-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-x86_64-linux-gnu.tar.gz |
+| Linux | aarch64 | glibc | aarch64-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-aarch64-linux-gnu.tar.gz |
+| Linux | armv7 (armhf) | glibc | arm-linux-gnueabihf | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-arm-linux-gnueabihf.tar.gz |
+| Linux | x86 (i386) | glibc | x86-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-x86-linux-gnu.tar.gz |
+| Linux | riscv64 | glibc | riscv64-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-riscv64-linux-gnu.tar.gz |
+| Linux | x86_64 | musl | x86_64-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-x86_64-linux-musl.tar.gz |
+| Linux | aarch64 | musl | aarch64-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-aarch64-linux-musl.tar.gz |
+| macOS | x86_64 | - | x86_64-macos | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-x86_64-macos.tar.gz |
+| macOS | aarch64 (Apple Silicon) | - | aarch64-macos | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-aarch64-macos.tar.gz |
 
-# ARM64
-wget https://github.com/gnusec/zigscan/releases/latest/download/zigscan-linux-aarch64.tar.gz
-tar xzf zigscan-linux-aarch64.tar.gz
-```
-
-**macOS:**
-```bash
-# Intel
-curl -LO https://github.com/gnusec/zigscan/releases/latest/download/zigscan-macos-x86_64.tar.gz
-tar xzf zigscan-macos-x86_64.tar.gz
-
-# Apple Silicon (M1/M2)
-curl -LO https://github.com/gnusec/zigscan/releases/latest/download/zigscan-macos-aarch64.tar.gz
-tar xzf zigscan-macos-aarch64.tar.gz
-```
-
-**Windows:**
-```powershell
-# Download and extract zigscan-windows-x86_64.exe.zip
-Invoke-WebRequest -Uri "https://github.com/gnusec/zigscan/releases/latest/download/zigscan-windows-x86_64.exe.zip" -OutFile zigscan.zip
-Expand-Archive zigscan.zip
-```
+Experimental builds (allowed to fail in CI; availability may vary): Windows x86_64/aarch64/x86, loongarch64, mips/mipsel/mips64/mips64el (gnu/musl), ppc64le, s390x, riscv32, riscv64-musl, arm-musleabihf.
 
 ### Build from Source
 
 Requirements:
-- Zig 0.13.0 or later
+- Zig 0.16 (nightly, master)
 
 ```bash
 git clone https://github.com/gnusec/zigscan.git
@@ -92,7 +77,7 @@ zigscan --help
 
 ```
 ZigScan - High-performance Port Scanner
-Version: 1.0.0
+Version: 0.1.1
 
 Usage: zigscan [options]
 

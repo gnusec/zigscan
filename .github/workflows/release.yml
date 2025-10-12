@@ -10,138 +10,151 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build for ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+  build-linux:
+    name: Build Linux ${{ matrix.target }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Linux glibc
-          - { os: ubuntu-latest, target: x86_64-linux,   zig_target: x86_64-linux-gnu,   artifact_name: zigscan-linux-x86_64,        native: true }
-          - { os: ubuntu-latest, target: aarch64-linux,  zig_target: aarch64-linux-gnu,  artifact_name: zigscan-linux-aarch64,       native: false }
-          - { os: ubuntu-latest, target: arm-linux,      zig_target: arm-linux-gnueabihf,artifact_name: zigscan-linux-armv7,         native: false }
-          - { os: ubuntu-latest, target: riscv64-linux,  zig_target: riscv64-linux-gnu,  artifact_name: zigscan-linux-riscv64,       native: false }
-          - { os: ubuntu-latest, target: x86-linux,      zig_target: x86-linux-gnu,      artifact_name: zigscan-linux-i386,          native: false }
-          
-          # Linux musl (static-friendly)
-          - { os: ubuntu-latest, target: x86_64-linux,   zig_target: x86_64-linux-musl,  artifact_name: zigscan-linux-musl-x86_64,   native: false }
-          - { os: ubuntu-latest, target: aarch64-linux,  zig_target: aarch64-linux-musl, artifact_name: zigscan-linux-musl-aarch64,  native: false }
-
-          # macOS builds (run on macOS for native test)
-          - { os: macos-latest,  target: x86_64-macos,   zig_target: x86_64-macos,       artifact_name: zigscan-macos-x86_64,        native: true }
-          - { os: macos-latest,  target: aarch64-macos,  zig_target: aarch64-macos,      artifact_name: zigscan-macos-aarch64,       native: true }
-
-          # Windows builds (run on Windows for native test for x86_64)
-          - { os: windows-latest,target: x86_64-windows, zig_target: x86_64-windows-gnu, artifact_name: zigscan-windows-x86_64.exe,   native: true }
-          - { os: windows-latest,target: aarch64-windows,zig_target: aarch64-windows-gnu,artifact_name: zigscan-windows-aarch64.exe,  native: false }
-            
+        target: [
+          "x86_64-linux-gnu",
+          "aarch64-linux-gnu",
+          "arm-linux-gnueabihf",
+          "x86-linux-gnu",
+          "riscv64-linux-gnu",
+          "x86_64-linux-musl",
+          "aarch64-linux-musl"
+        ]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Zig 0.13.0 (stable)
-        uses: goto-bus-stop/setup-zig@v2
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
-
-      - name: Build
+          version: master
+      - name: Build (static-preferred)
         run: |
-          zig build -Dtarget=${{ matrix.zig_target }} -Doptimize=ReleaseFast
-      
-      - name: Rename binary (Unix)
-        if: runner.os != 'Windows'
+          T="${{ matrix.target }}"
+          if [[ "$T" == *"linux-musl"* ]]; then
+            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true
+          else
+            if zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true; then
+              echo "static link ok"
+            else
+              echo "fallback to dynamic"
+              zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+            fi
+          fi
+      - name: Package
         run: |
-          mv zig-out/bin/zigscan zig-out/bin/${{ matrix.artifact_name }}
-          chmod +x zig-out/bin/${{ matrix.artifact_name }}
-          
-      - name: Rename binary (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          Move-Item -Path zig-out/bin/zigscan.exe -Destination zig-out/bin/${{ matrix.artifact_name }}
-
-      - name: Smoke test (native only)
-        if: matrix.native == true && runner.os != 'Windows'
-        run: |
-          ./zig-out/bin/${{ matrix.artifact_name }} --help | head -n 20
-
-      - name: Smoke test (Windows native)
-        if: matrix.native == true && runner.os == 'Windows'
-        run: |
-          ./zig-out/bin/${{ matrix.artifact_name }} --help | Select-Object -First 20
-
-      - name: Create tarball (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          cd zig-out/bin
-          tar czf ${{ matrix.artifact_name }}.tar.gz ${{ matrix.artifact_name }}
-          sha256sum ${{ matrix.artifact_name }}.tar.gz > ${{ matrix.artifact_name }}.tar.gz.sha256
-          
-      - name: Create zip (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd zig-out/bin
-          Compress-Archive -Path ${{ matrix.artifact_name }} -DestinationPath ${{ matrix.artifact_name }}.zip
-          
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+          OUT="zigscan-${{ matrix.target }}"
+          mv zig-out/bin/zigscan "$OUT"
+          chmod +x "$OUT"
+          tar czf "$OUT.tar.gz" "$OUT"
+          sha256sum "$OUT.tar.gz" > "$OUT.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: zigscan-${{ matrix.target }}
           path: |
-            zig-out/bin/${{ matrix.artifact_name }}.*
+            zigscan-${{ matrix.target }}.tar.gz
+            zigscan-${{ matrix.target }}.tar.gz.sha256
+
+  build-macos:
+    name: Build macOS ${{ matrix.target }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ["x86_64-macos", "aarch64-macos"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - name: Build
+        run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe
+      - name: Package
+        run: |
+          OUT="zigscan-${{ matrix.target }}"
+          mv zig-out/bin/zigscan "$OUT"
+          chmod +x "$OUT"
+          tar czf "$OUT.tar.gz" "$OUT"
+          shasum -a 256 "$OUT.tar.gz" > "$OUT.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zigscan-${{ matrix.target }}
+          path: |
+            zigscan-${{ matrix.target }}.tar.gz
+            zigscan-${{ matrix.target }}.tar.gz.sha256
+
+  build-experimental:
+    name: EXP Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "x86_64-windows",
+          "aarch64-windows",
+          "x86-windows",
+          "loongarch64-linux-gnu",
+          "mips-linux-musl",
+          "mipsel-linux-musl",
+          "mips64-linux-musl",
+          "mips64el-linux-musl",
+          "mips-linux-gnu",
+          "mipsel-linux-gnu",
+          "mips64-linux-gnu",
+          "mips64el-linux-gnu",
+          "powerpc64le-linux-gnu",
+          "s390x-linux-gnu",
+          "riscv32-linux-gnu",
+          "riscv64-linux-musl",
+          "arm-linux-musleabihf"
+        ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - name: Build (static-preferred)
+        run: |
+          T="${{ matrix.target }}"
+          if [[ "$T" == *"linux-musl"* ]]; then
+            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true || zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+          else
+            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true || zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+          fi
+      - name: Package
+        run: |
+          OUT="zigscan-${{ matrix.target }}"
+          if [[ "${{ matrix.target }}" == *"-windows"* ]]; then
+            mv zig-out/bin/zigscan.exe "$OUT.exe" || true
+            powershell -Command "Compress-Archive -Path '$OUT.exe' -DestinationPath '$OUT.zip'" || true
+          else
+            mv zig-out/bin/zigscan "$OUT" || true
+            chmod +x "$OUT" || true
+            tar czf "$OUT.tar.gz" "$OUT" || true
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zigscan-${{ matrix.target }}
+          path: |
+            zigscan-${{ matrix.target }}.tar.gz
+            zigscan-${{ matrix.target }}.zip
 
   release:
     name: Create Release
-    needs: build
+    needs: [build-linux, build-macos, build-experimental]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          
-      - name: Display structure
-        run: ls -R artifacts/
-        
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - run: ls -R artifacts/
+      - uses: softprops/action-gh-release@v1
         with:
-          files: |
-            artifacts/**/*
-          body: |
-            ## ZigScan Release ${{ github.ref_name }}
-            
-            High-performance port scanner written in Zig.
-            
-            ### Downloads
-            
-            **Linux:**
-            - `zigscan-linux-x86_64.tar.gz` - Linux x86_64
-            - `zigscan-linux-aarch64.tar.gz` - Linux ARM64
-            
-            **macOS:**
-            - `zigscan-macos-x86_64.tar.gz` - macOS Intel
-            - `zigscan-macos-aarch64.tar.gz` - macOS Apple Silicon (M1/M2)
-            
-            **Windows:**
-            - `zigscan-windows-x86_64.exe.zip` - Windows x86_64
-            
-            ### Usage
-            
-            ```bash
-            # Extract (Linux/macOS)
-            tar xzf zigscan-*.tar.gz
-            
-            # Run
-            ./zigscan -t <target> -p <ports>
-            ```
-            
-            See [README.md](https://github.com/gnusec/zigscan/blob/main/README.md) for full documentation.
+          files: artifacts/**/*
           draft: false
           prerelease: false
         env:
