@@ -18,10 +18,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig 0.16.0-dev
-        uses: goto-bus-stop/setup-zig@v2
+      - name: Setup Zig (nightly)
+        uses: mlugg/setup-zig@v1
         with:
-          version: 0.16.0-dev
+          version: master
 
       - name: Build
         run: zig build
@@ -42,10 +42,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig 0.16.0-dev
-        uses: goto-bus-stop/setup-zig@v2
+      - name: Setup Zig (nightly)
+        uses: mlugg/setup-zig@v1
         with:
-          version: 0.16.0-dev
+          version: master
 
       - name: Check formatting
         run: zig fmt --check src/
