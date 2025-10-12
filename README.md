@@ -27,6 +27,28 @@ Stable builds (static preferred, dynamic fallback when required):
 
 Experimental builds (allowed to fail in CI; availability may vary): Windows x86_64/aarch64/x86, loongarch64, mips/mipsel/mips64/mips64el (gnu/musl), ppc64le, s390x, riscv32, riscv64-musl, arm-musleabihf.
 
+#### Experimental Downloads (v0.1.1)
+
+| OS | Arch | Libc | Target | Download |
+|---|---|---|---|---|
+| Windows | x86_64 | - | x86_64-windows | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-x86_64-windows.zip |
+| Windows | aarch64 | - | aarch64-windows | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-aarch64-windows.zip |
+| Windows | x86 | - | x86-windows | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-x86-windows.zip |
+| Linux | loongarch64 | glibc | loongarch64-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-loongarch64-linux-gnu.tar.gz |
+| Linux | mips | musl | mips-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mips-linux-musl.tar.gz |
+| Linux | mipsel | musl | mipsel-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mipsel-linux-musl.tar.gz |
+| Linux | mips64 | musl | mips64-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mips64-linux-musl.tar.gz |
+| Linux | mips64el | musl | mips64el-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mips64el-linux-musl.tar.gz |
+| Linux | mips | glibc | mips-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mips-linux-gnu.tar.gz |
+| Linux | mipsel | glibc | mipsel-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mipsel-linux-gnu.tar.gz |
+| Linux | mips64 | glibc | mips64-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mips64-linux-gnu.tar.gz |
+| Linux | mips64el | glibc | mips64el-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-mips64el-linux-gnu.tar.gz |
+| Linux | powerpc64le | glibc | powerpc64le-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-powerpc64le-linux-gnu.tar.gz |
+| Linux | s390x | glibc | s390x-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-s390x-linux-gnu.tar.gz |
+| Linux | riscv32 | glibc | riscv32-linux-gnu | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-riscv32-linux-gnu.tar.gz |
+| Linux | riscv64 | musl | riscv64-linux-musl | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-riscv64-linux-musl.tar.gz |
+| Linux | armv7 (armhf) | musl | arm-linux-musleabihf | https://github.com/gnusec/zigscan/releases/download/v0.1.1/zigscan-arm-linux-musleabihf.tar.gz |
+
 ### Build from Source
 
 Requirements:
