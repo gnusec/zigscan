@@ -43,5 +43,6 @@
 1：通过 https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.699+529aa9f27.tar.xz 可以获取最新的zig可执行版本，直接下载到本地服务器，直接解压到/usr/loca/bin或者/bin目录下可用
 如果0.16.0不可行，则使用
 2：https://ziglang.org/documentation/master/ 和 https://ziglang.org/documentation/master/std/ 提供了最新的zig语法文档，可以保存到本地查询，如果有必要
+3： zig-Language-Reference.txt 是zig master的最新语法。你也可以自己通过步骤2的方法去下载。
  
 
