@@ -120,13 +120,12 @@ fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
 
     // Wait for connection with timeout using poll
     var fds = [_]posix.pollfd{.{ .fd = fd, .events = posix.POLL.OUT, .revents = 0 }};
-    const n = os.poll(fds[0..], @intCast(i32, timeout_ms)) catch return false;
+    const n = posix.poll(fds[0..], @as(i32, @intCast(timeout_ms))) catch return false;
     if (n == 0) return false; // timeout
 
     // Check if connection succeeded via SO_ERROR
     var err_code: c_int = 0;
-    var err_len: posix.socklen_t = @sizeOf(c_int);
-    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code), &err_len) catch return false;
+    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code)) catch return false;
     return err_code == 0;
 }
 
