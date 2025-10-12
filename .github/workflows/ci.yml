@@ -107,13 +107,26 @@ jobs:
           "x86_64-windows",
           "aarch64-windows",
           "x86-windows",
+          "x86_64-freebsd",
+          "aarch64-freebsd",
+          "x86_64-openbsd",
+          "aarch64-openbsd",
+          "x86_64-netbsd",
+          "aarch64-netbsd",
+          "loongarch64-linux-gnu",
           "mips-linux-musl",
           "mipsel-linux-musl",
           "mips64-linux-musl",
           "mips64el-linux-musl",
+          "mips-linux-gnu",
+          "mipsel-linux-gnu",
+          "mips64-linux-gnu",
+          "mips64el-linux-gnu",
           "powerpc64le-linux-gnu",
           "s390x-linux-gnu",
-          "riscv32-linux-gnu"
+          "riscv32-linux-gnu",
+          "riscv64-linux-musl",
+          "arm-linux-musleabihf"
         ]
     steps:
       - name: Checkout code
