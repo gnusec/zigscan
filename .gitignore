@@ -1,15 +1,19 @@
 # Zig build artifacts
-zig-out/
 .zig-cache/
-
-# Test output files
-*.txt
-!README.txt
-!zig-Language-Reference.txt
+zig-out/
+zig-cache/
 
 # Core dumps
 core
+core.*
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
 
 # OS files
 .DS_Store
-*~
+Thumbs.db

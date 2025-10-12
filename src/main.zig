@@ -197,18 +197,45 @@ const ScanWorker = struct {
 
 fn scanConcurrent(allocator: Allocator, host: []const u8, ports: []const u16, config: Config) !ArrayList(ScanResult) {
     var results = ArrayList(ScanResult).init(allocator);
-    
-    // Sequential scanning with batch tracking for concurrency configuration
-    // The concurrency parameter affects batch size for demonstration purposes
-    _ = config.concurrency; // Parameter available for future parallel implementation
-    
+    var task_queue = ArrayList(ScanTask).init(allocator);
+    defer task_queue.deinit();
+
+    // Create task queue
     for (ports) |port| {
-        const is_open = scanPort(host, port, config.timeout_ms);
-        try results.append(ScanResult{
+        try task_queue.append(ScanTask{
             .host = host,
             .port = port,
-            .open = is_open,
+            .timeout_ms = config.timeout_ms,
         });
+    }
+
+    // Create mutex for thread synchronization
+    var mutex = std.Thread.Mutex{};
+    var task_mutex = std.Thread.Mutex{};
+
+    // Create worker threads
+    const num_workers = @min(config.concurrency, ports.len);
+    const threads = try allocator.alloc(std.Thread, num_workers);
+    defer allocator.free(threads);
+
+    // Note: worker is declared as var (not const) because we pass a mutable pointer to threads
+    // even though the struct itself is not directly mutated
+    var worker = ScanWorker{
+        .allocator = allocator,
+        .task_queue = &task_queue,
+        .results = &results,
+        .mutex = &mutex,
+        .task_mutex = &task_mutex,
+    };
+
+    // Start worker threads
+    for (threads) |*thread| {
+        thread.* = try std.Thread.spawn(.{}, ScanWorker.run, .{&worker});
+    }
+
+    // Wait for all threads to complete
+    for (threads) |thread| {
+        thread.join();
     }
 
     return results;
