@@ -49,10 +49,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
+      - name: Setup Zig (latest dev)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
+          version: 0.16.0-dev.699+529aa9f27
 
       - name: Build
         run: |
@@ -140,7 +140,7 @@ jobs:
             ./zigscan -t <target> -p <ports>
             ```
             
-            See [README.md](https://github.com/gnusec/zigscan-template/blob/main/README.md) for full documentation.
+            See [README.md](https://github.com/gnusec/zigscan/blob/main/README.md) for full documentation.
           draft: false
           prerelease: false
         env:
