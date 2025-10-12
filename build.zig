@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) void {
         .linkage = if (want_static) .static else null,
     });
 
-    exe.strip = want_strip;
+    exe.root_module.strip = want_strip;
 
     exe.linkLibC();
 
