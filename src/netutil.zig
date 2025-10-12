@@ -4,16 +4,11 @@ const builtin = @import("builtin");
 
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
-        // Minimal Windows implementation: best-effort connect (timeout not enforced yet)
-        const address = net.Address.parseIp4(host, port) catch {
-            return false;
-        };
-        var conn = net.tcpConnectToAddress(address) catch {
-            return false;
-        };
-        defer conn.close();
-        _ = timeout_ms; // future: enforce timeout using non-blocking mode/IOCP
-        return true;
+        // Placeholder: Windows implementation will be added; keep behavior minimal
+        _ = host;
+        _ = port;
+        _ = timeout_ms;
+        return false;
     } else {
         return connectWithTimeoutIPv4Posix(host, port, timeout_ms);
     }
