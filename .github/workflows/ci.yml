@@ -26,6 +26,11 @@ jobs:
       - name: Build
         run: zig build
 
+      - name: Report binary size
+        run: |
+          ls -lh zig-out/bin/zigscan || true
+          printf "bytes=" && stat -c %s zig-out/bin/zigscan 2>/dev/null || stat -f %z zig-out/bin/zigscan 2>/dev/null || true
+
       - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <10s)
         run: |
           python3 - <<'PY'

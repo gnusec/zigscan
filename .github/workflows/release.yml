@@ -34,13 +34,13 @@ jobs:
         run: |
           T="${{ matrix.target }}"
           if [[ "$T" == *"linux-musl"* ]]; then
-            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true
+            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true -Dstrip=true
           else
-            if zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true; then
+            if zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true -Dstrip=true; then
               echo "static link ok"
             else
               echo "fallback to dynamic"
-              zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+              zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstrip=true
             fi
           fi
       - name: Package
@@ -50,6 +50,7 @@ jobs:
           chmod +x "$OUT"
           tar czf "$OUT.tar.gz" "$OUT"
           sha256sum "$OUT.tar.gz" > "$OUT.tar.gz.sha256"
+          echo "size-bytes=$(stat -c %s "$OUT" 2>/dev/null || stat -f %z "$OUT" 2>/dev/null)"
       - uses: actions/upload-artifact@v4
         with:
           name: zigscan-${{ matrix.target }}
@@ -70,7 +71,7 @@ jobs:
         with:
           version: master
       - name: Build
-        run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe
+        run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe -Dstrip=true
       - name: Package
         run: |
           OUT="zigscan-${{ matrix.target }}"
@@ -78,6 +79,7 @@ jobs:
           chmod +x "$OUT"
           tar czf "$OUT.tar.gz" "$OUT"
           shasum -a 256 "$OUT.tar.gz" > "$OUT.tar.gz.sha256"
+          echo "size-bytes=$(stat -f %z "$OUT" 2>/dev/null || echo N/A)"
       - uses: actions/upload-artifact@v4
         with:
           name: zigscan-${{ matrix.target }}
@@ -116,24 +118,26 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v2
         with:
           version: master
-      - name: Build (static-preferred)
+      - name: Build (static-preferred, size-optimized for IoT)
         run: |
           T="${{ matrix.target }}"
           if [[ "$T" == *"linux-musl"* ]]; then
-            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true || zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+            zig build -Dtarget="$T" -Doptimize=ReleaseSmall -Dstatic=true -Dstrip=true || zig build -Dtarget="$T" -Doptimize=ReleaseSmall -Dstrip=true
           else
-            zig build -Dtarget="$T" -Doptimize=ReleaseSafe -Dstatic=true || zig build -Dtarget="$T" -Doptimize=ReleaseSafe
+            zig build -Dtarget="$T" -Doptimize=ReleaseSmall -Dstatic=true -Dstrip=true || zig build -Dtarget="$T" -Doptimize=ReleaseSmall -Dstrip=true
           fi
       - name: Package
         run: |
           OUT="zigscan-${{ matrix.target }}"
           if [[ "${{ matrix.target }}" == *"-windows"* ]]; then
             mv zig-out/bin/zigscan.exe "$OUT.exe" || true
-            powershell -Command "Compress-Archive -Path '$OUT.exe' -DestinationPath '$OUT.zip'" || true
+            zip -9 "$OUT.zip" "$OUT.exe" || true
+            sha256sum "$OUT.zip" > "$OUT.zip.sha256" || true
           else
             mv zig-out/bin/zigscan "$OUT" || true
             chmod +x "$OUT" || true
             tar czf "$OUT.tar.gz" "$OUT" || true
+            sha256sum "$OUT.tar.gz" > "$OUT.tar.gz.sha256" || true
           fi
       - uses: actions/upload-artifact@v4
         with:
