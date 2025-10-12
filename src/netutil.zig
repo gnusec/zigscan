@@ -1,7 +1,6 @@
 const std = @import("std");
 const net = std.net;
 const builtin = @import("builtin");
-const windows = std.os.windows;
 
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
