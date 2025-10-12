@@ -63,7 +63,7 @@ fn parsePortList(allocator: Allocator, port_str: []const u8) !ArrayList(u16) {
     while (iter.next()) |port_part| {
         const trimmed = mem.trim(u8, port_part, " \t\r\n");
         if (trimmed.len == 0) continue;
-        
+
         const port = try fmt.parseInt(u16, trimmed, 10);
         try ports.append(allocator, port);
     }
@@ -93,67 +93,39 @@ fn parsePortRange(allocator: Allocator, range_str: []const u8) !ArrayList(u16) {
 }
 
 fn scanPort(host: []const u8, port: u16, timeout_ms: u32) bool {
-    const C = @cImport({
-        @cInclude("sys/socket.h");
-        @cInclude("netinet/in.h");
-        @cInclude("arpa/inet.h");
-        @cInclude("unistd.h");
-        @cInclude("fcntl.h");
-        @cInclude("errno.h");
-        @cInclude("poll.h");
-    });
-    
+    const posix = std.posix;
+
     // Parse the address
     const address = net.Address.parseIp4(host, port) catch {
         return false;
     };
 
-    // Create socket
-    const sockfd = C.socket(C.AF_INET, C.SOCK_STREAM, 0);
-    if (sockfd < 0) {
+    // Create socket (IPv4 TCP) non-blocking
+    const fd = posix.socket(posix.AF.INET, posix.SOCK.STREAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK, 0) catch {
         return false;
-    }
-    defer _ = C.close(sockfd);
-
-    // Set non-blocking
-    const flags = C.fcntl(sockfd, C.F_GETFL, @as(c_int, 0));
-    _ = C.fcntl(sockfd, C.F_SETFL, flags | C.O_NONBLOCK);
+    };
+    defer posix.close(fd);
 
     // Attempt connection
-    const addr_ptr: *const C.sockaddr = @ptrCast(&address.in);
-    const result = C.connect(sockfd, addr_ptr, @sizeOf(C.sockaddr_in));
-    
-    if (result == 0) {
-        return true; // Connected immediately
-    }
-
-    const err = C.__errno_location().*;
-    if (err != C.EINPROGRESS) {
-        return false;
-    }
+    const addr_ptr: *const posix.sockaddr = @ptrCast(&address.in);
+    const addr_len: posix.socklen_t = @sizeOf(@TypeOf(address.in));
+    var need_poll = false;
+    posix.connect(fd, addr_ptr, addr_len) catch |err| switch (err) {
+        error.WouldBlock, error.ConnectionPending => { need_poll = true; },
+        else => return false,
+    };
+    if (!need_poll) return true;
 
     // Wait for connection with timeout using poll
-    var pfd = C.pollfd{
-        .fd = sockfd,
-        .events = C.POLLOUT,
-        .revents = 0,
-    };
+    var fds = [_]posix.pollfd{.{ .fd = fd, .events = posix.POLL.OUT, .revents = 0 }};
+    const n = os.poll(fds[0..], @intCast(i32, timeout_ms)) catch return false;
+    if (n == 0) return false; // timeout
 
-    const poll_result = C.poll(&pfd, 1, @as(c_int, @intCast(timeout_ms)));
-    
-    if (poll_result <= 0) {
-        return false; // Timeout or error
-    }
-
-    // Check if connection succeeded
-    if (pfd.revents & C.POLLOUT != 0) {
-        var err_code: c_int = 0;
-        var err_len: C.socklen_t = @sizeOf(c_int);
-        _ = C.getsockopt(sockfd, C.SOL_SOCKET, C.SO_ERROR, @ptrCast(&err_code), &err_len);
-        return err_code == 0;
-    }
-
-    return false;
+    // Check if connection succeeded via SO_ERROR
+    var err_code: c_int = 0;
+    var err_len: posix.socklen_t = @sizeOf(c_int);
+    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code), &err_len) catch return false;
+    return err_code == 0;
 }
 
 const ScanTask = struct {
@@ -172,7 +144,7 @@ const ScanWorker = struct {
     fn run(self: *ScanWorker) void {
         while (true) {
             self.task_mutex.lock();
-            
+
             if (self.task_queue.items.len == 0) {
                 self.task_mutex.unlock();
                 break;
@@ -246,23 +218,27 @@ fn outputJson(allocator: Allocator, results: []const ScanResult, file_path: ?[]c
     defer output.deinit(allocator);
 
     try output.appendSlice(allocator, "[\n");
-    
+
     var first = true;
     for (results) |result| {
         if (!result.open) continue;
-        
+
         if (!first) {
             try output.appendSlice(allocator, ",\n");
         }
         first = false;
 
         try output.appendSlice(allocator, "  {\n");
-        try output.writer().print("    \"host\": \"{s}\",\n", .{result.host});
-        try output.writer().print("    \"port\": {},\n", .{result.port});
-        try output.writer().print("    \"status\": \"open\"\n", .{});
+        var buf: [128]u8 = undefined;
+        const s1 = try std.fmt.bufPrint(&buf, "    \"host\": \"{s}\",\n", .{result.host});
+        try output.appendSlice(allocator, s1);
+        const s2 = try std.fmt.bufPrint(&buf, "    \"port\": {},\n", .{result.port});
+        try output.appendSlice(allocator, s2);
+        const s3 = try std.fmt.bufPrint(&buf, "    \"status\": \"open\"\n", .{});
+        try output.appendSlice(allocator, s3);
         try output.appendSlice(allocator, "  }");
     }
-    
+
     try output.appendSlice(allocator, "\n]\n");
 
     if (file_path) |path| {
@@ -279,10 +255,12 @@ fn outputTxt(results: []const ScanResult, file_path: ?[]const u8) !void {
     if (file_path) |path| {
         const file = try fs.cwd().createFile(path, .{});
         defer file.close();
-        
+
+        var buf: [128]u8 = undefined;
         for (results) |result| {
             if (result.open) {
-                try file.writer().print("{s}:{}\n", .{ result.host, result.port });
+                const s = try std.fmt.bufPrint(&buf, "{s}:{}\n", .{ result.host, result.port });
+                try file.writeAll(s);
             }
         }
         std.debug.print("Results saved to {s}\n", .{path});
@@ -304,12 +282,12 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     var config = Config{};
-    
+
     // Parse command line arguments
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const arg = args[i];
-        
+
         if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
             printHelp();
             return;
@@ -403,7 +381,7 @@ pub fn main() !void {
         std.debug.print("[*] Scanning...\n\n", .{});
 
         const start_time = std.time.milliTimestamp();
-        
+
         var results = try scanConcurrent(allocator, target, ports_list.items, config);
         defer results.deinit(allocator);
 
