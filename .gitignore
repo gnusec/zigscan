@@ -1,0 +1,15 @@
+# Zig build artifacts
+zig-out/
+.zig-cache/
+
+# Test output files
+*.txt
+!README.txt
+!zig-Language-Reference.txt
+
+# Core dumps
+core
+
+# OS files
+.DS_Store
+*~
