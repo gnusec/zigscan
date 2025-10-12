@@ -83,7 +83,18 @@ jobs:
           version: master
 
       - name: Cross build
-        run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe
+        run: |
+          if [[ "${{ matrix.target }}" == *"linux-musl"* ]]; then
+            zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe -Dstatic=true
+          else
+            # Try static first; if unsupported, fallback to dynamic
+            if zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe -Dstatic=true; then
+              echo "static link succeeded"
+            else
+              echo "static link unsupported; falling back to dynamic"
+              zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe
+            fi
+          fi
 
       - name: Run help test
         run: ./zig-out/bin/zigscan --help
