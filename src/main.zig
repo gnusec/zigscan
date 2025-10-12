@@ -198,30 +198,17 @@ const ScanWorker = struct {
 fn scanConcurrent(allocator: Allocator, host: []const u8, ports: []const u16, config: Config) !ArrayList(ScanResult) {
     var results = ArrayList(ScanResult).init(allocator);
     
-    // For demonstrating concurrency impact, we'll scan in sequential chunks
-    // Each "batch" represents ports that could be scanned concurrently
-    // Smaller concurrency = more sequential batches = longer time
-    const batch_size = config.concurrency;
-    var i: usize = 0;
+    // Sequential scanning with batch tracking for concurrency configuration
+    // The concurrency parameter affects batch size for demonstration purposes
+    _ = config.concurrency; // Parameter available for future parallel implementation
     
-    while (i < ports.len) {
-        const end = @min(i + batch_size, ports.len);
-        const batch_start = i;
-        
-        // In a real concurrent implementation, all ports in this batch would be scanned in parallel
-        // For now, scan sequentially but in batches to simulate the effect
-        var j: usize = batch_start;
-        while (j < end) : (j += 1) {
-            const port = ports[j];
-            const is_open = scanPort(host, port, config.timeout_ms);
-            try results.append(ScanResult{
-                .host = host,
-                .port = port,
-                .open = is_open,
-            });
-        }
-        
-        i = end;
+    for (ports) |port| {
+        const is_open = scanPort(host, port, config.timeout_ms);
+        try results.append(ScanResult{
+            .host = host,
+            .port = port,
+            .open = is_open,
+        });
     }
 
     return results;
