@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         
     steps:
       - name: Checkout code
@@ -28,27 +28,62 @@ jobs:
 
       - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <10s)
         run: |
-          start=$(date +%s%3N)
-          ./zig-out/bin/zigscan -t 127.0.0.1 -r 80-555 -c 100 --timeout 200 >/dev/null
-          end=$(date +%s%3N)
-          dur=$((end-start))
-          echo "duration=${dur}ms"
-          if [ "$dur" -gt 10000 ]; then
-            echo "FAIL: scan took >10s"
-            exit 1
-          fi
+          python3 - <<'PY'
+          import time, subprocess, sys
+          start = time.time()
+          code = subprocess.call(["./zig-out/bin/zigscan","-t","127.0.0.1","-r","80-555","-c","100","--timeout","200"], stdout=subprocess.DEVNULL)
+          if code != 0:
+              sys.exit(code)
+          dur = int((time.time()-start)*1000)
+          print(f"duration={dur}ms")
+          if dur > 10000:
+              print("FAIL: scan took >10s")
+              sys.exit(1)
+          PY
 
       - name: Performance smoke test (103.235.46.115 ports 80,443, c=100, timeout=200ms, <10s)
         run: |
-          start=$(date +%s%3N)
-          ./zig-out/bin/zigscan -t 103.235.46.115 -p 80,443 -c 100 --timeout 200 >/dev/null
-          end=$(date +%s%3N)
-          dur=$((end-start))
-          echo "duration=${dur}ms"
-          if [ "$dur" -gt 10000 ]; then
-            echo "FAIL: scan took >10s"
-            exit 1
-          fi
+          python3 - <<'PY'
+          import time, subprocess, sys
+          start = time.time()
+          code = subprocess.call(["./zig-out/bin/zigscan","-t","103.235.46.115","-p","80,443","-c","100","--timeout","200"], stdout=subprocess.DEVNULL)
+          if code != 0:
+              sys.exit(code)
+          dur = int((time.time()-start)*1000)
+          print(f"duration={dur}ms")
+          if dur > 10000:
+              print("FAIL: scan took >10s")
+              sys.exit(1)
+          PY
+
+  cross-build:
+    name: Cross-build ${{ matrix.target }} on ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          "x86_64-linux-gnu",
+          "aarch64-linux-gnu",
+          "arm-linux-gnueabihf",
+          "i386-linux-gnu",
+          "riscv64-linux-gnu",
+          "x86_64-linux-musl",
+          "aarch64-linux-musl",
+          "x86_64-macos",
+          "aarch64-macos"
+        ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Zig (nightly)
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Cross build
+        run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe
 
       - name: Run help test
         run: ./zig-out/bin/zigscan --help
