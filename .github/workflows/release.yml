@@ -27,9 +27,9 @@ jobs:
         ]
     steps:
       - uses: actions/checkout@v4
-      - uses: goto-bus-stop/setup-zig@v2
+      - uses: ziglang/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev
       - name: Build (static-preferred)
         run: |
           T="${{ matrix.target }}"
@@ -67,9 +67,9 @@ jobs:
         target: ["x86_64-macos", "aarch64-macos"]
     steps:
       - uses: actions/checkout@v4
-      - uses: goto-bus-stop/setup-zig@v2
+      - uses: ziglang/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev
       - name: Build
         run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseSafe -Dstrip=true
       - name: Package
@@ -115,9 +115,9 @@ jobs:
         ]
     steps:
       - uses: actions/checkout@v4
-      - uses: goto-bus-stop/setup-zig@v2
+      - uses: ziglang/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev
       - name: Build (static-preferred, size-optimized for IoT)
         run: |
           T="${{ matrix.target }}"
