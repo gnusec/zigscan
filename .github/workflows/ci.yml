@@ -18,10 +18,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (nightly)
+      - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev.725+923ddd94a
 
       - name: Build
         run: zig build
@@ -80,10 +80,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (nightly)
+      - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev.725+923ddd94a
 
       - name: Cross build
         run: |
@@ -137,10 +137,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (nightly)
+      - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev.725+923ddd94a
 
       - name: Cross build (static preferred with fallback)
         shell: bash
@@ -165,10 +165,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (nightly)
+      - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev.725+923ddd94a
 
       - name: Check formatting
         run: zig fmt --check src/
