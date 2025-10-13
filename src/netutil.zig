@@ -67,7 +67,14 @@ pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool
 
         var pfd: wsa.pollfd = .{ .fd = s, .events = wsa.POLLOUT, .revents = 0 };
         const n = wsa.WSAPoll(&pfd, 1, @as(c_int, @intCast(timeout_ms)));
-        if (n <= 0) { if (n == 0) inc_timeout() else inc_other(); return false; } // timeout or error
+        if (n <= 0) {
+            if (n == 0) {
+                inc_timeout();
+            } else {
+                inc_other();
+            }
+            return false; // timeout or error
+        }
 
         var soerr: c_int = 0;
         var optlen: c_int = @intCast(@sizeOf(c_int));
