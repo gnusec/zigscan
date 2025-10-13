@@ -218,14 +218,17 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
         };
 
         const tstart = std.time.milliTimestamp();
+        const prev_len = results.items.len;
         for (threads) |*t| t.* = try std.Thread.spawn(.{}, ScanWorker.run, .{&worker});
         for (threads) |t| t.join();
         const dur = std.time.milliTimestamp() - tstart;
 
-        // 统计本批次 open 数
+        // 统计本批次 open 数（仅计算本批新增的结果）
         var open_batch: usize = 0;
-        for (results.items) |r| {
-            if (r.open) open_batch += 1;
+        const new_count = results.items.len - prev_len;
+        var k: usize = 0;
+        while (k < new_count) : (k += 1) {
+            if (results.items[prev_len + k].open) open_batch += 1;
         }
 
         const timeout = config.timeout_ms;
@@ -237,7 +240,7 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
 
         if (config.adaptive_log) {
             std.debug.print("[adaptive] batch={d} dur={d}ms open_increase={d}/{d} -> concurrency={d}\n", .{
-                batch_c, dur, open_batch, batch_c, current_c,
+                batch_c, dur, open_batch, new_count, current_c,
             });
         }
 
