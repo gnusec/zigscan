@@ -1,19 +1,44 @@
 const std = @import("std");
 const net = std.net;
 const builtin = @import("builtin");
+const windows = std.os.windows;
+const wsa = windows.ws2_32;
 
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
-        // Minimal Windows implementation (timeout not enforced yet)
+        // Windows: non-blocking connect with timeout using WSAPoll
         const address = net.Address.parseIp4(host, port) catch {
             return false;
         };
-        var conn = net.tcpConnectToAddress(address) catch {
-            return false;
-        };
-        defer conn.close();
-        // TODO: enforce timeout with non-blocking connect in a follow-up
-        return true;
+
+        const s = wsa.socket(wsa.AF_INET, wsa.SOCK_STREAM, wsa.IPPROTO_TCP);
+        if (s == wsa.INVALID_SOCKET) return false;
+        defer _ = wsa.closesocket(s);
+
+        var nonblock: wsa.u_long = 1;
+        if (wsa.ioctlsocket(s, wsa.FIONBIO, &nonblock) == wsa.SOCKET_ERROR) return false;
+
+        const sa: *const wsa.sockaddr = @ptrCast(&address.in);
+        const sa_len: c_int = @intCast(@sizeOf(@TypeOf(address.in)));
+        const cres = wsa.connect(s, sa, sa_len);
+        if (cres == wsa.SOCKET_ERROR) {
+            const err = wsa.WSAGetLastError();
+            switch (err) {
+                wsa.WSAEWOULDBLOCK, wsa.WSAEINPROGRESS, wsa.WSAEALREADY => {},
+                else => return false,
+            }
+        } else {
+            return true;
+        }
+
+        var pfd: wsa.pollfd = .{ .fd = s, .events = wsa.POLLOUT, .revents = 0 };
+        const n = wsa.WSAPoll(&pfd, 1, @as(c_int, @intCast(timeout_ms)));
+        if (n <= 0) return false; // timeout or error
+
+        var soerr: c_int = 0;
+        var optlen: c_int = @intCast(@sizeOf(c_int));
+        if (wsa.getsockopt(s, wsa.SOL_SOCKET, wsa.SO_ERROR, @ptrCast(&soerr), &optlen) == wsa.SOCKET_ERROR) return false;
+        return soerr == 0;
     } else {
         return connectWithTimeoutIPv4Posix(host, port, timeout_ms);
     }
