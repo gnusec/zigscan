@@ -3,7 +3,6 @@ const net = std.net;
 const builtin = @import("builtin");
 const windows = std.os.windows;
 const wsa = windows.ws2_32;
-const mem = std.mem;
 
 // Failure stats (global, atomic) for optional adaptive logging
 var g_fail_timeout: u64 = 0;
