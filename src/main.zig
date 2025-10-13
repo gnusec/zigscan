@@ -246,7 +246,7 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
         if (config.adaptive_log) {
             const st = netutil.snapshotFailureStats();
             std.debug.print("[adaptive] batch={d} dur={d}ms open_increase={d}/{d} -> concurrency={d} | fail(timeout/refused/other)={d}/{d}/{d}\n", .{
-                batch_c, dur, open_batch, new_count, current_c,
+                batch_c,    dur,        open_batch, new_count, current_c,
                 st.timeout, st.refused, st.other,
             });
         }

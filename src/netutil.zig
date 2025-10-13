@@ -44,11 +44,17 @@ pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool
         };
 
         const s = wsa.socket(wsa.AF_INET, wsa.SOCK_STREAM, wsa.IPPROTO_TCP);
-        if (s == wsa.INVALID_SOCKET) { inc_other(); return false; }
+        if (s == wsa.INVALID_SOCKET) {
+            inc_other();
+            return false;
+        }
         defer _ = wsa.closesocket(s);
 
         var nonblock: wsa.u_long = 1;
-        if (wsa.ioctlsocket(s, wsa.FIONBIO, &nonblock) == wsa.SOCKET_ERROR) { inc_other(); return false; }
+        if (wsa.ioctlsocket(s, wsa.FIONBIO, &nonblock) == wsa.SOCKET_ERROR) {
+            inc_other();
+            return false;
+        }
 
         const sa: *const wsa.sockaddr = @ptrCast(&address.in);
         const sa_len: c_int = @intCast(@sizeOf(@TypeOf(address.in)));
@@ -57,9 +63,18 @@ pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool
             const err = wsa.WSAGetLastError();
             switch (err) {
                 wsa.WSAEWOULDBLOCK, wsa.WSAEINPROGRESS, wsa.WSAEALREADY => {},
-                wsa.WSAECONNREFUSED => { inc_refused(); return false; },
-                wsa.WSAETIMEDOUT => { inc_timeout(); return false; },
-                else => { inc_other(); return false; },
+                wsa.WSAECONNREFUSED => {
+                    inc_refused();
+                    return false;
+                },
+                wsa.WSAETIMEDOUT => {
+                    inc_timeout();
+                    return false;
+                },
+                else => {
+                    inc_other();
+                    return false;
+                },
             }
         } else {
             return true;
@@ -78,10 +93,19 @@ pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool
 
         var soerr: c_int = 0;
         var optlen: c_int = @intCast(@sizeOf(c_int));
-        if (wsa.getsockopt(s, wsa.SOL_SOCKET, wsa.SO_ERROR, @ptrCast(&soerr), &optlen) == wsa.SOCKET_ERROR) { inc_other(); return false; }
+        if (wsa.getsockopt(s, wsa.SOL_SOCKET, wsa.SO_ERROR, @ptrCast(&soerr), &optlen) == wsa.SOCKET_ERROR) {
+            inc_other();
+            return false;
+        }
         if (soerr == 0) return true;
-        if (soerr == wsa.WSAECONNREFUSED) { inc_refused(); return false; }
-        if (soerr == wsa.WSAETIMEDOUT) { inc_timeout(); return false; }
+        if (soerr == wsa.WSAECONNREFUSED) {
+            inc_refused();
+            return false;
+        }
+        if (soerr == wsa.WSAETIMEDOUT) {
+            inc_timeout();
+            return false;
+        }
         inc_other();
         return false;
     } else {
@@ -110,19 +134,37 @@ fn connectWithTimeoutIPv4Posix(host: []const u8, port: u16, timeout_ms: u32) boo
         error.WouldBlock, error.ConnectionPending => {
             need_poll = true;
         },
-        else => { inc_other(); return false; },
+        else => {
+            inc_other();
+            return false;
+        },
     };
     if (!need_poll) return true;
 
     var fds = [_]posix.pollfd{.{ .fd = fd, .events = posix.POLL.OUT, .revents = 0 }};
-    const n = posix.poll(fds[0..], @as(i32, @intCast(timeout_ms))) catch { inc_other(); return false; };
-    if (n == 0) { inc_timeout(); return false; }
+    const n = posix.poll(fds[0..], @as(i32, @intCast(timeout_ms))) catch {
+        inc_other();
+        return false;
+    };
+    if (n == 0) {
+        inc_timeout();
+        return false;
+    }
 
     var err_code: c_int = 0;
-    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code)) catch { inc_other(); return false; };
+    posix.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, std.mem.asBytes(&err_code)) catch {
+        inc_other();
+        return false;
+    };
     if (err_code == 0) return true;
-    if (err_code == @intFromEnum(posix.E.CONNREFUSED)) { inc_refused(); return false; }
-    if (err_code == @intFromEnum(posix.E.TIMEDOUT)) { inc_timeout(); return false; }
+    if (err_code == @intFromEnum(posix.E.CONNREFUSED)) {
+        inc_refused();
+        return false;
+    }
+    if (err_code == @intFromEnum(posix.E.TIMEDOUT)) {
+        inc_timeout();
+        return false;
+    }
     inc_other();
     return false;
 }
