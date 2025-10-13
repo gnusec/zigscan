@@ -35,6 +35,12 @@ jobs:
         with:
           version: master
 
+      - name: Zig version
+        run: |
+          which zig || true
+          zig version || true
+          zig env || true
+
       - name: Build
         run: zig build
 
@@ -129,6 +135,12 @@ jobs:
         with:
           version: master
 
+      - name: Zig version
+        run: |
+          which zig || true
+          zig version || true
+          zig env || true
+
       - name: Cross build
         run: |
           if [[ "${{ matrix.target }}" == *"linux-musl"* ]]; then
@@ -198,6 +210,12 @@ jobs:
         with:
           version: master
 
+      - name: Zig version
+        run: |
+          which zig || true
+          zig version || true
+          zig env || true
+
       - name: Cross build (static preferred with fallback)
         shell: bash
         run: |
@@ -237,6 +255,12 @@ jobs:
         uses: mlugg/setup-zig@v1
         with:
           version: master
+
+      - name: Zig version
+        run: |
+          which zig || true
+          zig version || true
+          zig env || true
 
       - name: Check formatting
         run: zig fmt --check src/
