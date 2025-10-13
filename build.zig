@@ -5,6 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const want_static = b.option(bool, "static", "Link statically when supported") orelse false;
     const want_strip = b.option(bool, "strip", "Strip symbols to reduce binary size") orelse false;
+    _ = want_strip; // parsed for forward-compatibility; currently unused
 
     const exe = b.addExecutable(.{
         .name = "zigscan",
