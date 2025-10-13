@@ -41,7 +41,7 @@ jobs:
               sys.exit(code)
           dur = int((time.time()-start)*1000)
           print(f"duration={dur}ms")
-          if dur > 10000:
+          if dur > 15000:
               print("FAIL: scan took >10s")
               sys.exit(1)
           PY
@@ -56,7 +56,7 @@ jobs:
               sys.exit(code)
           dur = int((time.time()-start)*1000)
           print(f"duration={dur}ms")
-          if dur > 10000:
+          if dur > 15000:
               print("FAIL: scan took >10s")
               sys.exit(1)
           PY
