@@ -18,8 +18,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
+      - name: Setup Zig (primary)
+        id: setup_primary
         uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+        continue-on-error: true
+
+      - name: Setup Zig (fallback ziglang)
+        uses: ziglang/setup-zig@v2
         with:
           version: master
 
@@ -100,8 +107,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
+      - name: Setup Zig (primary)
+        id: setup_primary
         uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+        continue-on-error: true
+
+      - name: Setup Zig (fallback ziglang)
+        uses: ziglang/setup-zig@v2
         with:
           version: master
 
@@ -157,8 +171,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
+      - name: Setup Zig (primary)
+        id: setup_primary
         uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+        continue-on-error: true
+
+      - name: Setup Zig (fallback ziglang)
+        uses: ziglang/setup-zig@v2
         with:
           version: master
 
@@ -185,8 +206,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
+      - name: Setup Zig (primary)
+        id: setup_primary
         uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+        continue-on-error: true
+
+      - name: Setup Zig (fallback ziglang)
+        uses: ziglang/setup-zig@v2
         with:
           version: master
 
