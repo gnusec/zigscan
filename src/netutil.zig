@@ -1,8 +1,7 @@
 const std = @import("std");
 const net = std.net;
 const builtin = @import("builtin");
-const windows = std.os.windows;
-const wsa = windows.ws2_32;
+// Windows-specific imports will be referenced inside the Windows-only branch
 
 // Failure stats (global, atomic) for optional adaptive logging
 var g_fail_timeout: u64 = 0;
@@ -37,6 +36,8 @@ pub fn snapshotFailureStats() FailureStats {
 
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
+        const windows = std.os.windows;
+        const wsa = windows.ws2_32;
         // Windows: non-blocking connect with timeout using WSAPoll
         const address = net.Address.parseIp4(host, port) catch {
             return false;
