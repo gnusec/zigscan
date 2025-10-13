@@ -4,8 +4,7 @@ const builtin = @import("builtin");
 
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
-        // Windows path to be implemented: initial stub to enable compilation
-        // Future: use std.net cross-platform connect or Winsock with timeout
+        // Placeholder: Windows implementation will be added; keep behavior minimal
         return false;
     } else {
         return connectWithTimeoutIPv4Posix(host, port, timeout_ms);
