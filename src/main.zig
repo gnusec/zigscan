@@ -232,10 +232,13 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
         }
 
         const timeout = config.timeout_ms;
-        if (dur < timeout / 3 and current_c < max_c and open_batch > 0) {
-            current_c = @min(max_c, current_c + (current_c / 2) + 1);
+        if (dur >= (timeout * 3) / 4 and open_batch == 0 and current_c > min_c) {
+            // Near-timeout and no opens: downscale more aggressively
+            current_c = @max(min_c, current_c / 2);
         } else if (dur > timeout and current_c > min_c) {
             current_c = @max(min_c, current_c - (current_c / 3) - 1);
+        } else if (dur < timeout / 3 and current_c < max_c and open_batch > 0) {
+            current_c = @min(max_c, current_c + (current_c / 2) + 1);
         }
 
         if (config.adaptive_log) {
