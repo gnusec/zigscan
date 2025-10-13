@@ -21,7 +21,7 @@ jobs:
       - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.16.0-dev.725+923ddd94a
+          version: 0.16.0-dev.699+529aa9f27
 
       - name: Build
         run: zig build
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.16.0-dev.725+923ddd94a
+          version: 0.16.0-dev.699+529aa9f27
 
       - name: Cross build
         run: |
@@ -140,7 +140,7 @@ jobs:
       - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.16.0-dev.725+923ddd94a
+          version: 0.16.0-dev.699+529aa9f27
 
       - name: Cross build (static preferred with fallback)
         shell: bash
@@ -168,7 +168,7 @@ jobs:
       - name: Setup Zig (pinned)
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.16.0-dev.725+923ddd94a
+          version: 0.16.0-dev.699+529aa9f27
 
       - name: Check formatting
         run: zig fmt --check src/
