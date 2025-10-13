@@ -30,6 +30,11 @@ jobs:
         with:
           version: master
 
+      - name: Setup Zig (fallback mlugg)
+        uses: mlugg/setup-zig@v1
+        with:
+          version: master
+
       - name: Build
         run: zig build
 
@@ -119,6 +124,11 @@ jobs:
         with:
           version: master
 
+      - name: Setup Zig (fallback mlugg)
+        uses: mlugg/setup-zig@v1
+        with:
+          version: master
+
       - name: Cross build
         run: |
           if [[ "${{ matrix.target }}" == *"linux-musl"* ]]; then
@@ -183,6 +193,11 @@ jobs:
         with:
           version: master
 
+      - name: Setup Zig (fallback mlugg)
+        uses: mlugg/setup-zig@v1
+        with:
+          version: master
+
       - name: Cross build (static preferred with fallback)
         shell: bash
         run: |
@@ -215,6 +230,11 @@ jobs:
 
       - name: Setup Zig (fallback ziglang)
         uses: ziglang/setup-zig@v2
+        with:
+          version: master
+
+      - name: Setup Zig (fallback mlugg)
+        uses: mlugg/setup-zig@v1
         with:
           version: master
 
