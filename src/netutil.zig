@@ -5,9 +5,6 @@ const builtin = @import("builtin");
 pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool {
     if (builtin.os.tag == .windows) {
         // Placeholder: Windows implementation will be added; keep behavior minimal
-        _ = host;
-        _ = port;
-        _ = timeout_ms;
         return false;
     } else {
         return connectWithTimeoutIPv4Posix(host, port, timeout_ms);
