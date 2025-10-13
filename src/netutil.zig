@@ -12,7 +12,7 @@ pub fn connectWithTimeoutIPv4(host: []const u8, port: u16, timeout_ms: u32) bool
             return false;
         };
         defer conn.close();
-        _ = timeout_ms; // TODO: enforce timeout with non-blocking connect in a follow-up
+        // TODO: enforce timeout with non-blocking connect in a follow-up
         return true;
     } else {
         return connectWithTimeoutIPv4Posix(host, port, timeout_ms);
