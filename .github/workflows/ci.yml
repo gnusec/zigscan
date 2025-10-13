@@ -31,6 +31,22 @@ jobs:
           ls -lh zig-out/bin/zigscan || true
           printf "bytes=" && stat -c %s zig-out/bin/zigscan 2>/dev/null || stat -f %z zig-out/bin/zigscan 2>/dev/null || true
 
+      - name: Size threshold warning (non-fatal)
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          p = 'zig-out/bin/zigscan'
+          if not os.path.exists(p):
+              print('size-check: binary not found (skipping)')
+              sys.exit(0)
+          sz = os.stat(p).st_size
+          # Conservative threshold for CI debug/default builds; warn-only
+          THRESHOLD = 12000000  # 12 MB
+          print(f'size-check: {sz} bytes (threshold={THRESHOLD})')
+          if sz > THRESHOLD:
+              print(f'WARNING: zigscan binary size {sz} exceeds threshold {THRESHOLD} (warn-only)')
+          PY
+
       - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <15s, retry x1)
         run: |
           python3 - <<'PY'
