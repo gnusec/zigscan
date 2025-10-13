@@ -219,6 +219,8 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
 
         const tstart = std.time.milliTimestamp();
         const prev_len = results.items.len;
+        // Reset failure stats for this batch (only used when --adaptive-log)
+        netutil.resetFailureStats();
         for (threads) |*t| t.* = try std.Thread.spawn(.{}, ScanWorker.run, .{&worker});
         for (threads) |t| t.join();
         const dur = std.time.milliTimestamp() - tstart;
@@ -242,8 +244,10 @@ fn scanConcurrentAdaptive(allocator: Allocator, host: []const u8, ports: []const
         }
 
         if (config.adaptive_log) {
-            std.debug.print("[adaptive] batch={d} dur={d}ms open_increase={d}/{d} -> concurrency={d}\n", .{
+            const st = netutil.snapshotFailureStats();
+            std.debug.print("[adaptive] batch={d} dur={d}ms open_increase={d}/{d} -> concurrency={d} | fail(timeout/refused/other)={d}/{d}/{d}\n", .{
                 batch_c, dur, open_batch, new_count, current_c,
+                st.timeout, st.refused, st.other,
             });
         }
 
