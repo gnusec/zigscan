@@ -113,7 +113,6 @@ jobs:
       # Cross-built binaries are not runnable on the host; we only verify build succeeds
 
   experimental-cross-build:
-    if: false # temporarily disabled to stabilize CI
     name: EXP Cross-build ${{ matrix.target }} (static-preferred)
     runs-on: ubuntu-latest
     continue-on-error: true
