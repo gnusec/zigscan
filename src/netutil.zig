@@ -4,33 +4,34 @@ const builtin = @import("builtin");
 // Windows-specific imports will be referenced inside the Windows-only branch
 
 // Failure stats (global, atomic) for optional adaptive logging
-var g_fail_timeout: u64 = 0;
-var g_fail_refused: u64 = 0;
-var g_fail_other: u64 = 0;
+// Use u32 to support 32-bit targets where 64-bit atomics may be unavailable
+var g_fail_timeout: u32 = 0;
+var g_fail_refused: u32 = 0;
+var g_fail_other: u32 = 0;
 
 inline fn inc_timeout() void {
-    _ = @atomicRmw(u64, &g_fail_timeout, .Add, 1, .seq_cst);
+    _ = @atomicRmw(u32, &g_fail_timeout, .Add, 1, .seq_cst);
 }
 inline fn inc_refused() void {
-    _ = @atomicRmw(u64, &g_fail_refused, .Add, 1, .seq_cst);
+    _ = @atomicRmw(u32, &g_fail_refused, .Add, 1, .seq_cst);
 }
 inline fn inc_other() void {
-    _ = @atomicRmw(u64, &g_fail_other, .Add, 1, .seq_cst);
+    _ = @atomicRmw(u32, &g_fail_other, .Add, 1, .seq_cst);
 }
 
 pub const FailureStats = struct { timeout: u64, refused: u64, other: u64 };
 
 pub fn resetFailureStats() void {
-    @atomicStore(u64, &g_fail_timeout, 0, .seq_cst);
-    @atomicStore(u64, &g_fail_refused, 0, .seq_cst);
-    @atomicStore(u64, &g_fail_other, 0, .seq_cst);
+    @atomicStore(u32, &g_fail_timeout, 0, .seq_cst);
+    @atomicStore(u32, &g_fail_refused, 0, .seq_cst);
+    @atomicStore(u32, &g_fail_other, 0, .seq_cst);
 }
 
 pub fn snapshotFailureStats() FailureStats {
     return .{
-        .timeout = @atomicLoad(u64, &g_fail_timeout, .seq_cst),
-        .refused = @atomicLoad(u64, &g_fail_refused, .seq_cst),
-        .other = @atomicLoad(u64, &g_fail_other, .seq_cst),
+        .timeout = @as(u64, @atomicLoad(u32, &g_fail_timeout, .seq_cst)),
+        .refused = @as(u64, @atomicLoad(u32, &g_fail_refused, .seq_cst)),
+        .other = @as(u64, @atomicLoad(u32, &g_fail_other, .seq_cst)),
     };
 }
 
