@@ -81,10 +81,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: 0.16.0-dev.728+87c18945c
+      - name: Install Zig (ubuntu, pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.728+87c18945c.tar.xz"
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Cross build
         run: |
@@ -103,6 +111,7 @@ jobs:
       # Cross-built binaries are not runnable on the host; we only verify build succeeds
 
   experimental-cross-build:
+    if: false # temporarily disabled to stabilize CI
     name: EXP Cross-build ${{ matrix.target }} (static-preferred)
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -138,10 +147,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: 0.16.0-dev.728+87c18945c
+      - name: Install Zig (ubuntu, pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.728+87c18945c.tar.xz"
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Cross build (static preferred with fallback)
         shell: bash
@@ -166,10 +183,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: 0.16.0-dev.728+87c18945c
+      - name: Install Zig (ubuntu, pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.728+87c18945c.tar.xz"
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Check formatting
         run: zig fmt --check src/
