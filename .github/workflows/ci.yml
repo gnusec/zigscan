@@ -32,6 +32,7 @@ jobs:
           tar -xJf zig.tar.xz
           DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
           echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          export PATH="$HOME/zig/$DIR:$PATH"
           zig version
 
 
@@ -92,6 +93,7 @@ jobs:
           tar -xJf zig.tar.xz
           DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
           echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          export PATH="$HOME/zig/$DIR:$PATH"
           zig version
 
       - name: Cross build
@@ -158,6 +160,7 @@ jobs:
           tar -xJf zig.tar.xz
           DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
           echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          export PATH="$HOME/zig/$DIR:$PATH"
           zig version
 
       - name: Cross build (static preferred with fallback)
