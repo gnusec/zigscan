@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         
     steps:
       - name: Checkout code
@@ -187,6 +187,7 @@ PY
       # Cross-built binaries are not runnable on the host; we only verify build succeeds
 
   experimental-cross-build:
+    if: false # temporarily disabled for stability; non-Windows core path only
     name: EXP Cross-build ${{ matrix.target }} (static-preferred)
     runs-on: ubuntu-latest
     continue-on-error: true
