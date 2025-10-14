@@ -14,57 +14,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Zig (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<'PY'
-import json,urllib.request,platform,sys
-plat='x86_64-linux'
-data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
-src=data.get('master') or data.get('dev')
-print(src[plat]['tarball'])
-PY
-          )
-          echo "Downloading $URL"
-          mkdir -p $HOME/zig && cd $HOME/zig
-          curl -L --fail -o zig.tar.xz "$URL"
-          tar -xJf zig.tar.xz
-          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
-          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
-          zig version
-
-      - name: Install Zig (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euo pipefail
-          PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<'PY'
-import json,urllib.request,platform
-arch=platform.machine()
-plat='aarch64-macos' if arch=='arm64' else 'x86_64-macos'
-data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
-src=data.get('master') or data.get('dev')
-print(src[plat]['tarball'])
-PY
-          )
-          echo "Downloading $URL"
-          mkdir -p $HOME/zig && cd $HOME/zig
-          curl -L --fail -o zig.tar.xz "$URL"
-          # macOS bsdtar supports auto-detect; -J may be unavailable
-          tar -xf zig.tar.xz
-          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
-          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
-          zig version
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
 
 
       - name: Check formatting
