@@ -20,20 +20,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Zig (ubuntu)
+      - name: Install Zig (ubuntu, pinned)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
-          PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<'PY'
-import json,urllib.request
-plat='x86_64-linux'
-data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
-src=data.get('master') or data.get('dev')
-print(src[plat]['tarball'])
-PY
-          )
+          URL="https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.728+87c18945c.tar.xz"
           echo "Downloading $URL"
           mkdir -p $HOME/zig && cd $HOME/zig
           curl -L --fail -o zig.tar.xz "$URL"
