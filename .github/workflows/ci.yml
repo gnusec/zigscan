@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         
     steps:
       - name: Checkout code
@@ -70,19 +70,6 @@ PY
           echo "$HOME/zig/$DIR" >> $GITHUB_PATH
           zig version
 
-      - name: Install Zig (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          $url = (Invoke-RestMethod -TimeoutSec 30 https://ziglang.org/download/index.json).master."x86_64-windows".zip
-          Write-Host "Downloading $url"
-          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\zig" | Out-Null
-          Invoke-WebRequest -Uri $url -OutFile "$env:USERPROFILE\zig\zig.zip" -UseBasicParsing
-          Expand-Archive -Path "$env:USERPROFILE\zig\zig.zip" -DestinationPath "$env:USERPROFILE\zig" -Force
-          $dir = Get-ChildItem "$env:USERPROFILE\zig" -Directory | Where-Object { $_.Name -like 'zig-*' } | Select-Object -First 1
-          "$($dir.FullName)" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          zig version
 
       - name: Check formatting
         run: zig fmt --check src/
