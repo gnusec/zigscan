@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - '**'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -12,19 +14,78 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
+      - name: Install Zig (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          URL=$($PY - <<'PY'
+import json,urllib.request,platform,sys
+plat='x86_64-linux'
+data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
+src=data.get('master') or data.get('dev')
+print(src[plat]['tarball'])
+PY
+          )
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
-      - name: Build
-        run: zig build
+      - name: Install Zig (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          arch=$(uname -m)
+          case "$arch" in
+            arm64) plat='aarch64-macos' ;;
+            x86_64) plat='x86_64-macos' ;;
+            *) echo "unsupported arch: $arch"; exit 1 ;;
+          esac
+          PY=$(command -v python3 || command -v python)
+          URL=$($PY - <<PY
+import json,urllib.request,os
+plat=os.environ['plat']
+data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
+src=data.get('master') or data.get('dev')
+print(src[plat]['tarball'])
+PY
+          )
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
+
+      - name: Install Zig (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $url = (Invoke-RestMethod -TimeoutSec 30 https://ziglang.org/download/index.json).master."x86_64-windows".zip
+          Write-Host "Downloading $url"
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\zig" | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile "$env:USERPROFILE\zig\zig.zip" -UseBasicParsing
+          Expand-Archive -Path "$env:USERPROFILE\zig\zig.zip" -DestinationPath "$env:USERPROFILE\zig" -Force
+          $dir = Get-ChildItem "$env:USERPROFILE\zig" -Directory | Where-Object { $_.Name -like 'zig-*' } | Select-Object -First 1
+          "$($dir.FullName)" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          zig version
+
+      - name: Check formatting
+        run: zig fmt --check src/
 
       - name: Report binary size
         run: |
@@ -47,7 +108,11 @@ jobs:
               print(f'WARNING: zigscan binary size {sz} exceeds threshold {THRESHOLD} (warn-only)')
           PY
 
+      - name: Build
+        run: zig build
+
       - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <15s, retry x1)
+        if: runner.os == 'Linux'
         run: |
           python3 - <<'PY'
           import time, subprocess, sys
@@ -65,6 +130,7 @@ jobs:
           PY
 
       - name: Performance smoke test (103.235.46.115 ports 80,443, c=100, timeout=200ms, <15s, retry x1)
+        if: runner.os == 'Linux'
         run: |
           python3 - <<'PY'
           import time, subprocess, sys
@@ -100,10 +166,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
+      - name: Install Zig (manual)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          URL=$($PY - <<'PY'
+import json,urllib.request
+plat='x86_64-linux'
+data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
+src=data.get('master') or data.get('dev')
+print(src[plat]['tarball'])
+PY
+          )
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Cross build
         run: |
@@ -157,10 +239,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
+      - name: Install Zig (manual)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          URL=$($PY - <<'PY'
+import json,urllib.request
+plat='x86_64-linux'
+data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
+src=data.get('master') or data.get('dev')
+print(src[plat]['tarball'])
+PY
+          )
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Cross build (static preferred with fallback)
         shell: bash
@@ -185,10 +283,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
+      - name: Install Zig (manual)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          URL=$($PY - <<'PY'
+import json,urllib.request
+plat='x86_64-linux'
+data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
+src=data.get('master') or data.get('dev')
+print(src[plat]['tarball'])
+PY
+          )
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Check formatting
         run: zig fmt --check src/
