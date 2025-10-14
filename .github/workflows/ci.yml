@@ -47,16 +47,11 @@ PY
         shell: bash
         run: |
           set -euo pipefail
-          arch=$(uname -m)
-          case "$arch" in
-            arm64) plat='aarch64-macos' ;;
-            x86_64) plat='x86_64-macos' ;;
-            *) echo "unsupported arch: $arch"; exit 1 ;;
-          esac
           PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<PY
-import json,urllib.request,os
-plat=os.environ['plat']
+          URL=$($PY - <<'PY'
+import json,urllib.request,platform
+arch=platform.machine()
+plat='aarch64-macos' if arch=='arm64' else 'x86_64-macos'
 data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
 src=data.get('master') or data.get('dev')
 print(src[plat]['tarball'])
