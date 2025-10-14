@@ -18,28 +18,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (primary)
-        id: setup_primary
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
-        continue-on-error: true
-
-      - name: Setup Zig (fallback ziglang)
-        uses: ziglang/setup-zig@v2
-        with:
-          version: master
-
-      - name: Setup Zig (fallback mlugg)
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
-
-      - name: Zig version
+      - name: Install Zig (manual)
+        shell: bash
         run: |
-          which zig || true
-          zig version || true
-          zig env || true
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          OS=$(uname -s)
+          ARCH=$(uname -m)
+          case "$OS-$ARCH" in
+            Linux-x86_64)   KEY=x86_64-linux   ;;
+            Linux-aarch64)  KEY=aarch64-linux  ;;
+            Darwin-x86_64)  KEY=x86_64-macos  ;;
+            Darwin-arm64)   KEY=aarch64-macos ;;
+            *) echo "Unsupported runner $OS $ARCH"; exit 1;;
+          esac
+          $PY - <<'PY'
+import json,urllib.request,os,sys
+key=os.environ['KEY']
+url='https://ziglang.org/download/index.json'
+with urllib.request.urlopen(url, timeout=30) as r:
+  data=json.load(r)
+src=data.get('master') or data.get('dev')
+if not src or key not in src:
+  print('no key', key); sys.exit(1)
+print(src[key]['tarball'])
+PY
+          ZIG_URL=$( $PY - <<'PY'
+import json,urllib.request,os,sys
+key=os.environ['KEY']
+url='https://ziglang.org/download/index.json'
+with urllib.request.urlopen(url, timeout=30) as r:
+  data=json.load(r)
+src=data.get('master') or data.get('dev')
+print(src[key]['tarball'])
+PY
+          )
+          echo "Downloading $ZIG_URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$ZIG_URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Build
         run: zig build
@@ -118,28 +138,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (primary)
-        id: setup_primary
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
-        continue-on-error: true
-
-      - name: Setup Zig (fallback ziglang)
-        uses: ziglang/setup-zig@v2
-        with:
-          version: master
-
-      - name: Setup Zig (fallback mlugg)
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
-
-      - name: Zig version
+      - name: Install Zig (manual)
+        shell: bash
         run: |
-          which zig || true
-          zig version || true
-          zig env || true
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          OS=$(uname -s)
+          ARCH=$(uname -m)
+          case "$OS-$ARCH" in
+            Linux-x86_64)   KEY=x86_64-linux   ;;
+            Linux-aarch64)  KEY=aarch64-linux  ;;
+            Darwin-x86_64)  KEY=x86_64-macos  ;;
+            Darwin-arm64)   KEY=aarch64-macos ;;
+            *) echo "Unsupported runner $OS $ARCH"; exit 1;;
+          esac
+          ZIG_URL=$( $PY - <<'PY'
+import json,urllib.request,os,sys
+key=os.environ['KEY']
+url='https://ziglang.org/download/index.json'
+with urllib.request.urlopen(url, timeout=30) as r:
+  data=json.load(r)
+src=data.get('master') or data.get('dev')
+print(src[key]['tarball'])
+PY
+          )
+          echo "Downloading $ZIG_URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$ZIG_URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Cross build
         run: |
@@ -193,28 +222,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (primary)
-        id: setup_primary
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
-        continue-on-error: true
-
-      - name: Setup Zig (fallback ziglang)
-        uses: ziglang/setup-zig@v2
-        with:
-          version: master
-
-      - name: Setup Zig (fallback mlugg)
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
-
-      - name: Zig version
+      - name: Install Zig (manual)
+        shell: bash
         run: |
-          which zig || true
-          zig version || true
-          zig env || true
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          OS=$(uname -s)
+          ARCH=$(uname -m)
+          case "$OS-$ARCH" in
+            Linux-x86_64)   KEY=x86_64-linux   ;;
+            Linux-aarch64)  KEY=aarch64-linux  ;;
+            Darwin-x86_64)  KEY=x86_64-macos  ;;
+            Darwin-arm64)   KEY=aarch64-macos ;;
+            *) echo "Unsupported runner $OS $ARCH"; exit 1;;
+          esac
+          ZIG_URL=$( $PY - <<'PY'
+import json,urllib.request,os,sys
+key=os.environ['KEY']
+url='https://ziglang.org/download/index.json'
+with urllib.request.urlopen(url, timeout=30) as r:
+  data=json.load(r)
+src=data.get('master') or data.get('dev')
+print(src[key]['tarball'])
+PY
+          )
+          echo "Downloading $ZIG_URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$ZIG_URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Cross build (static preferred with fallback)
         shell: bash
@@ -239,28 +277,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Zig (primary)
-        id: setup_primary
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
-        continue-on-error: true
-
-      - name: Setup Zig (fallback ziglang)
-        uses: ziglang/setup-zig@v2
-        with:
-          version: master
-
-      - name: Setup Zig (fallback mlugg)
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
-
-      - name: Zig version
+      - name: Install Zig (manual)
+        shell: bash
         run: |
-          which zig || true
-          zig version || true
-          zig env || true
+          set -euo pipefail
+          PY=$(command -v python3 || command -v python)
+          OS=$(uname -s)
+          ARCH=$(uname -m)
+          case "$OS-$ARCH" in
+            Linux-x86_64)   KEY=x86_64-linux   ;;
+            Linux-aarch64)  KEY=aarch64-linux  ;;
+            Darwin-x86_64)  KEY=x86_64-macos  ;;
+            Darwin-arm64)   KEY=aarch64-macos ;;
+            *) echo "Unsupported runner $OS $ARCH"; exit 1;;
+          esac
+          ZIG_URL=$( $PY - <<'PY'
+import json,urllib.request,os,sys
+key=os.environ['KEY']
+url='https://ziglang.org/download/index.json'
+with urllib.request.urlopen(url, timeout=30) as r:
+  data=json.load(r)
+src=data.get('master') or data.get('dev')
+print(src[key]['tarball'])
+PY
+          )
+          echo "Downloading $ZIG_URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$ZIG_URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          zig version
 
       - name: Check formatting
         run: zig fmt --check src/
