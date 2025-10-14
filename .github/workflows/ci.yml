@@ -71,26 +71,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Zig (manual)
-        shell: bash
-        run: |
-          set -euo pipefail
-          PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<'PY'
-import json,urllib.request
-plat='x86_64-linux'
-data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
-src=data.get('master') or data.get('dev')
-print(src[plat]['tarball'])
-PY
-          )
-          echo "Downloading $URL"
-          mkdir -p $HOME/zig && cd $HOME/zig
-          curl -L --fail -o zig.tar.xz "$URL"
-          tar -xJf zig.tar.xz
-          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
-          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
-          zig version
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.16.0-dev.728+87c18945c
 
       - name: Cross build
         run: |
@@ -144,26 +128,10 @@ PY
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Zig (manual)
-        shell: bash
-        run: |
-          set -euo pipefail
-          PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<'PY'
-import json,urllib.request
-plat='x86_64-linux'
-data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
-src=data.get('master') or data.get('dev')
-print(src[plat]['tarball'])
-PY
-          )
-          echo "Downloading $URL"
-          mkdir -p $HOME/zig && cd $HOME/zig
-          curl -L --fail -o zig.tar.xz "$URL"
-          tar -xJf zig.tar.xz
-          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
-          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
-          zig version
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.16.0-dev.728+87c18945c
 
       - name: Cross build (static preferred with fallback)
         shell: bash
@@ -188,26 +156,10 @@ PY
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Zig (manual)
-        shell: bash
-        run: |
-          set -euo pipefail
-          PY=$(command -v python3 || command -v python)
-          URL=$($PY - <<'PY'
-import json,urllib.request
-plat='x86_64-linux'
-data=json.load(urllib.request.urlopen('https://ziglang.org/download/index.json',timeout=30))
-src=data.get('master') or data.get('dev')
-print(src[plat]['tarball'])
-PY
-          )
-          echo "Downloading $URL"
-          mkdir -p $HOME/zig && cd $HOME/zig
-          curl -L --fail -o zig.tar.xz "$URL"
-          tar -xJf zig.tar.xz
-          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
-          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
-          zig version
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.16.0-dev.728+87c18945c
 
       - name: Check formatting
         run: zig fmt --check src/
