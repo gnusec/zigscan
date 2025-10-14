@@ -37,8 +37,7 @@ PY
           echo "Downloading $URL"
           mkdir -p $HOME/zig && cd $HOME/zig
           curl -L --fail -o zig.tar.xz "$URL"
-          # macOS bsdtar supports auto-detect; -J may be unavailable
-          tar -xf zig.tar.xz
+          tar -xJf zig.tar.xz
           DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
           echo "$HOME/zig/$DIR" >> $GITHUB_PATH
           zig version
@@ -61,7 +60,8 @@ PY
           echo "Downloading $URL"
           mkdir -p $HOME/zig && cd $HOME/zig
           curl -L --fail -o zig.tar.xz "$URL"
-          tar -xJf zig.tar.xz
+          # macOS bsdtar supports auto-detect; -J may be unavailable
+          tar -xf zig.tar.xz
           DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
           echo "$HOME/zig/$DIR" >> $GITHUB_PATH
           zig version
