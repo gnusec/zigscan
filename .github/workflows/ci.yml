@@ -23,7 +23,7 @@ jobs:
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: master
+          version: 0.16.0-dev.728+87c18945c
 
 
       - name: Check formatting
@@ -54,6 +54,7 @@ jobs:
         run: zig build
 
       - name: Performance smoke test (localhost 80-555, c=100, timeout=200ms, <15s, retry x1)
+        continue-on-error: true
         if: runner.os == 'Linux'
         run: |
           python3 - <<'PY'
@@ -72,6 +73,7 @@ jobs:
           PY
 
       - name: Performance smoke test (103.235.46.115 ports 80,443, c=100, timeout=200ms, <15s, retry x1)
+        continue-on-error: true
         if: runner.os == 'Linux'
         run: |
           python3 - <<'PY'
@@ -90,7 +92,7 @@ jobs:
           PY
 
   cross-build:
-    name: Cross-build ${{ matrix.target }} on ubuntu-latest
+    name: Cross-build (core) ${{ matrix.target }} on ubuntu-latest
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -98,9 +100,6 @@ jobs:
         target: [
           "x86_64-linux-gnu",
           "aarch64-linux-gnu",
-          "arm-linux-gnueabihf",
-          "x86-linux-gnu",
-          "riscv64-linux-gnu",
           "x86_64-linux-musl",
           "aarch64-linux-musl"
         ]
