@@ -7,6 +7,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -19,6 +25,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Cache Zig
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/zig
+          key: zig-${{ runner.os }}-0.16.0-dev.728
 
       - name: Install Zig (ubuntu, pinned)
         if: runner.os == 'Linux'
@@ -73,6 +87,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Zig
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/zig
+          key: zig-${{ runner.os }}-0.16.0-dev.728
+
       - name: Install Zig (macOS, pinned)
         shell: bash
         run: |
@@ -115,6 +137,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Cache Zig
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/zig
+          key: zig-${{ runner.os }}-0.16.0-dev.728
 
       - name: Install Zig (ubuntu, pinned)
         shell: bash
@@ -183,6 +213,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Zig
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/zig
+          key: zig-${{ runner.os }}-0.16.0-dev.728
+
       - name: Install Zig (ubuntu, pinned)
         shell: bash
         run: |
@@ -221,6 +259,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Zig
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/zig
+          key: zig-${{ runner.os }}-0.16.0-dev.728
+
       - name: Install Zig (ubuntu, pinned)
         shell: bash
         run: |
@@ -253,6 +299,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Cache Zig
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/zig
+          key: zig-${{ runner.os }}-0.16.0-dev.728
 
       - name: Install Zig (ubuntu, pinned)
         shell: bash
