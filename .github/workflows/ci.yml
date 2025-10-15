@@ -65,6 +65,40 @@ jobs:
 
       # Smoke tests disabled to stabilize CI; can be re-enabled per-branch
 
+  test-macos:
+    name: Test on macos-latest (non-blocking)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Zig (macOS, pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          V="0.16.0-dev.728+87c18945c"
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then
+            URL="https://ziglang.org/builds/zig-aarch64-macos-$V.tar.xz"
+          else
+            URL="https://ziglang.org/builds/zig-x86_64-macos-$V.tar.xz"
+          fi
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          export PATH="$HOME/zig/$DIR:$PATH"
+          zig version
+
+      - name: Check formatting
+        run: zig fmt --check src/
+
+      - name: Build
+        run: zig build
+
   cross-build:
     name: Cross-build (core) ${{ matrix.target }} on ubuntu-latest
     runs-on: ubuntu-latest
@@ -113,6 +147,7 @@ jobs:
       # Cross-built binaries are not runnable on the host; we only verify build succeeds
 
   experimental-cross-build:
+    if: github.event_name != 'pull_request'
     name: EXP Cross-build ${{ matrix.target }} (static-preferred)
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -176,6 +211,40 @@ jobs:
               zig build -Dtarget="$T" -Doptimize=ReleaseSafe
             fi
           fi
+
+  smoke:
+    if: github.event_name != 'pull_request'
+    name: Smoke tests (ubuntu, non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Zig (ubuntu, pinned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://ziglang.org/builds/zig-x86_64-linux-0.16.0-dev.728+87c18945c.tar.xz"
+          echo "Downloading $URL"
+          mkdir -p $HOME/zig && cd $HOME/zig
+          curl -L --fail -o zig.tar.xz "$URL"
+          tar -xJf zig.tar.xz
+          DIR=$(find . -maxdepth 1 -type d -name 'zig-*' | head -n1)
+          echo "$HOME/zig/$DIR" >> $GITHUB_PATH
+          export PATH="$HOME/zig/$DIR:$PATH"
+          zig version
+
+      - name: Build
+        run: zig build
+
+      - name: Smoke localhost range
+        continue-on-error: true
+        run: ./zig-out/bin/zigscan -t 127.0.0.1 -r 80-200 -c 64 --timeout 150 || true
+
+      - name: Smoke remote ports
+        continue-on-error: true
+        run: ./zig-out/bin/zigscan -t 103.235.46.115 -p 80,443 -c 64 --timeout 150 || true
 
   lint:
     name: Format Check
