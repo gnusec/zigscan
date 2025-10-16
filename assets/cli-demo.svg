@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" role="img" aria-label="zigscan CLI demo">
+  <defs>
+    <style><![CDATA[
+      .term { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; }
+    ]]></style>
+    <!-- typing mask grows width to reveal text -->
+    <mask id="reveal1">
+      <rect x="0" y="0" width="0" height="24" fill="white">
+        <animate attributeName="width" from="0" to="820" dur="2.2s" begin="0.2s" fill="freeze" />
+      </rect>
+    </mask>
+    <mask id="reveal2">
+      <rect x="0" y="0" width="0" height="24" fill="white">
+        <animate attributeName="width" from="0" to="780" dur="1.2s" begin="2.6s" fill="freeze" />
+      </rect>
+    </mask>
+    <mask id="reveal3">
+      <rect x="0" y="0" width="0" height="24" fill="white">
+        <animate attributeName="width" from="0" to="500" dur="0.9s" begin="3.9s" fill="freeze" />
+      </rect>
+    </mask>
+    <!-- blinking cursor -->
+    <rect id="cursor" width="10" height="18" fill="#E2E8F0">
+      <animate attributeName="opacity" values="1;0;1" dur="0.9s" repeatCount="indefinite" />
+    </rect>
+  </defs>
+
+  <!-- terminal window -->
+  <rect x="0" y="0" width="900" height="420" rx="12" fill="#0B1220" />
+  <rect x="0" y="0" width="900" height="40" rx="12" fill="#111827" />
+  <circle cx="26" cy="20" r="7" fill="#EF4444" />
+  <circle cx="50" cy="20" r="7" fill="#F59E0B" />
+  <circle cx="74" cy="20" r="7" fill="#10B981" />
+  <text class="term" x="96" y="26" fill="#9CA3AF">zigscan demo</text>
+
+  <!-- content -->
+  <g transform="translate(24,70)" class="term" fill="#E5E7EB">
+    <text y="0">$</text>
+    <g transform="translate(18,0)" mask="url(#reveal1)">
+      <text> zigscan -t 103.235.46.115 -p 80,443 -c 100 --timeout 200 --adaptive</text>
+    </g>
+    <!-- cursor position follows typing end -->
+    <use href="#cursor" x="838">
+      <animate attributeName="x" from="0" to="838" dur="2.2s" begin="0.2s" fill="freeze" />
+      <animate attributeName="y" from="-14" to="-14" dur="0.1s" begin="0s" fill="freeze" />
+    </use>
+
+    <g transform="translate(0,40)">
+      <text fill="#9CA3AF">[info] adaptive mode: start c=100, timeout=200ms</text>
+    </g>
+
+    <g transform="translate(0,72)">
+      <text>connecting ....................................................................</text>
+    </g>
+
+    <g transform="translate(0,104)">
+      <text fill="#10B981">open</text>
+      <text x="56">: 80</text>
+      <text x="104">(http)</text>
+    </g>
+
+    <g transform="translate(0,136)">
+      <text fill="#10B981">open</text>
+      <text x="56">: 443</text>
+      <text x="112">(https)</text>
+    </g>
+
+    <g transform="translate(0,168)">
+      <text fill="#F59E0B">timeout</text>
+      <text x="84">: 22, 445, 8080</text>
+    </g>
+
+    <g transform="translate(0,200)" fill="#93C5FD">
+      <text>stats</text><text x="56">: scanned 476 ports in 1.8s, c=128 → 96</text>
+    </g>
+
+    <g transform="translate(0,250)">
+      <text y="0">$</text>
+      <g transform="translate(18,0)" mask="url(#reveal2)">
+        <text> zigscan -t scanme.nmap.org -r 1-1000 -c 200 --timeout 150</text>
+      </g>
+      <use href="#cursor" x="784" y="-14">
+        <animate attributeName="x" from="0" to="784" dur="1.2s" begin="2.6s" fill="freeze" />
+      </use>
+    </g>
+
+    <g transform="translate(0,290)" fill="#9CA3AF">
+      <text>...</text>
+    </g>
+
+    <g transform="translate(0,330)">
+      <text y="0">$</text>
+      <g transform="translate(18,0)" mask="url(#reveal3)">
+        <text> zigscan --help</text>
+      </g>
+      <use href="#cursor" x="504" y="-14">
+        <animate attributeName="x" from="0" to="504" dur="0.9s" begin="3.9s" fill="freeze" />
+      </use>
+    </g>
+  </g>
+</svg>
