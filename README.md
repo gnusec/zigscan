@@ -10,10 +10,10 @@ A high-performance port scanner written in Zig, similar to RustScan, designed fo
 ### 10s Quick Demo
 
 <p align="center">
-  <img src="assets/cli-demo.svg" alt="zigscan CLI demo animation" />
+  <img src="assets/cli-demo.gif" alt="zigscan CLI demo animation" />
   <br/>
-  <sub>If the animation does not play in your viewer, open the raw file or view on GitHub web.</sub>
-  
+  <sub>Prefer GIF for compatibility. SVG version: <a href="assets/cli-demo.svg">assets/cli-demo.svg</a></sub>
+
 </p>
 
 ## ⚡ Quick Start
