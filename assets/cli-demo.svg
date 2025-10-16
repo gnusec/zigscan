@@ -5,17 +5,17 @@
       .term { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; }
     ]]></style>
     <!-- typing mask grows width to reveal text -->
-    <mask id="reveal1">
+    <mask id="reveal1" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
       <rect x="0" y="0" width="0" height="24" fill="white">
         <animate attributeName="width" from="0" to="820" dur="2.2s" begin="0.2s" fill="freeze" />
       </rect>
     </mask>
-    <mask id="reveal2">
+    <mask id="reveal2" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
       <rect x="0" y="0" width="0" height="24" fill="white">
         <animate attributeName="width" from="0" to="780" dur="1.2s" begin="2.6s" fill="freeze" />
       </rect>
     </mask>
-    <mask id="reveal3">
+    <mask id="reveal3" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
       <rect x="0" y="0" width="0" height="24" fill="white">
         <animate attributeName="width" from="0" to="500" dur="0.9s" begin="3.9s" fill="freeze" />
       </rect>
