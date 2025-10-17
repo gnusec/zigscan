@@ -55,8 +55,10 @@ jobs:
         with:
           name: zigscan-${{ matrix.target }}
           path: |
+            zigscan-${{ matrix.target }}
             zigscan-${{ matrix.target }}.tar.gz
             zigscan-${{ matrix.target }}.tar.gz.sha256
+          if-no-files-found: ignore
 
   build-macos:
     name: Build macOS ${{ matrix.target }}
@@ -84,8 +86,10 @@ jobs:
         with:
           name: zigscan-${{ matrix.target }}
           path: |
+            zigscan-${{ matrix.target }}
             zigscan-${{ matrix.target }}.tar.gz
             zigscan-${{ matrix.target }}.tar.gz.sha256
+          if-no-files-found: ignore
 
   build-experimental:
     name: EXP Build ${{ matrix.target }}
@@ -143,8 +147,13 @@ jobs:
         with:
           name: zigscan-${{ matrix.target }}
           path: |
+            zigscan-${{ matrix.target }}
+            zigscan-${{ matrix.target }}.exe
             zigscan-${{ matrix.target }}.tar.gz
             zigscan-${{ matrix.target }}.zip
+            zigscan-${{ matrix.target }}.tar.gz.sha256
+            zigscan-${{ matrix.target }}.zip.sha256
+          if-no-files-found: ignore
 
   release:
     name: Create Release
